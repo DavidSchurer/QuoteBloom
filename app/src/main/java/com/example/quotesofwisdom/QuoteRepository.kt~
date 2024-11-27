@@ -1,0 +1,24 @@
+package com.example.quotesofwisdom
+import android.content.Context
+import android.content.SharedPreferences
+import java.time.LocalDate
+
+class QuoteRepository(private val context: Context) {
+    private val prefs = context.getSharedPreferences("quotes", Context.MODE_PRIVATE)
+
+    fun getQuote(category: String): Quote? {
+        val today = LocalDate.now().toString()
+        val storedQuote = prefs.getString(today, null)
+        if (storedQuote != null) {
+            return Quote(storedQuote, "")
+        }
+
+        val quote = QuoteApi().getQuote(category)
+        if (quote != null) {
+            prefs.edit().putString(today, quote.quote).apply()
+            return quote
+        }
+
+        return null
+    }
+}
