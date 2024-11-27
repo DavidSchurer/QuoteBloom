@@ -142,7 +142,3 @@ suspend fun fetchRandomQuote(): Pair<String, String>? {
 
 data class QuoteSearchResponse(val results: List<QuoteResult>)
 data class QuoteResult(val content: String)
-data class QuoteResponse(
-    val quote: String,
-    val author: String
-)
