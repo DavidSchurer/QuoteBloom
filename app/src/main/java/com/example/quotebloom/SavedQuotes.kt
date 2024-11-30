@@ -10,8 +10,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.Button
 import androidx.compose.material.Card
-import androidx.compose.material.FloatingActionButton
+import androidx.compose.material.FabPosition
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
@@ -76,7 +77,7 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
         },
         floatingActionButton = {
             if (savedQuotes.value.isNotEmpty()) {
-                FloatingActionButton(
+                Button(
                     onClick = {
                         if (user != null) {
                             firestore.collection("users")
@@ -89,12 +90,12 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
                                 }
                         }
                     },
-                    backgroundColor = MaterialTheme.colors.primary
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete All Saved Quotes")
+                    Text("Delete All Saved Quotes")
                 }
             }
-        }
+        },
+        floatingActionButtonPosition = FabPosition.Center
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -137,7 +138,11 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
                                                 savedQuotes.value = savedQuotes.value.filter { it.documentId != quoteData.documentId }
                                             }
                                     }
-                                }) {
+                                },
+                                    modifier = Modifier
+                                        .padding(start = 8.dp)
+                                        .padding(8.dp)
+                                    ) {
                                     Icon(Icons.Default.Delete, contentDescription = "Delete Quote")
                                 }
                             }
