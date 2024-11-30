@@ -126,7 +126,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                     onClick = { navController.navigate("savedQuotes") },
                     modifier = Modifier.weight(1f)
                 ) {
-                    
+                    Text("Saved Quotes")
                 }
             }
         }

@@ -207,11 +207,11 @@ fun saveQuoteToFirebase(firestore: FirebaseFirestore, userId: String, quote: Str
             .collection("savedQuotes")
             .add(quoteData)
             .addOnSuccessListener {
-                Log.d("SavedQuote", "Quote successfully saved.")
-            }
-            .addOnFailureListener { e ->
-                Log.e("SavedQuote", "Error saving quote: ${e.message}", e)
-            }
+            Log.d("SavedQuote", "Quote successfully saved.")
+        }
+        .addOnFailureListener { e ->
+            Log.e("SavedQuote", "Error saving quote: ${e.message}", e)
+        }
 }
 
 suspend fun fetchQuoteByCategory(category: String, api: QuoteApiService): Pair<String, String>? {

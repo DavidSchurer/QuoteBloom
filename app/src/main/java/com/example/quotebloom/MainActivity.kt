@@ -56,7 +56,7 @@ fun QuotesApp(mAuth: FirebaseAuth) {
             MainPage(navController, mAuth)
         }
         composable("search") {
-            SearchQuotes(navController, api = RetrofitInstance.api)
+            SearchQuotes(navController, api = RetrofitInstance.api, mAuth)
         }
         composable("savedQuotes") {
             SavedQuotes(navController, mAuth)
