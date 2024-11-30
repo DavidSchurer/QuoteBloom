@@ -4,23 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
@@ -44,7 +36,7 @@ fun QuotesApp() {
             MainPage(navController)
         }
         composable("search") {
-            SearchQuotes(navController)
+            SearchQuotes(navController, api = RetrofitInstance.api)
         }
     }
 }
@@ -113,6 +105,13 @@ interface QuoteApiService {
         @Query("query") query: String,
         @Header("X-Api-Key") apiKey: String
     ): QuoteSearchResponse
+
+    @GET("quotes")
+    suspend fun searchQuotesByCategory(
+        @Query("category") category: String,
+        @Header("X-Api-Key") apiKey: String
+    ): List<Quote>
+
 }
 
 object RetrofitInstance {
