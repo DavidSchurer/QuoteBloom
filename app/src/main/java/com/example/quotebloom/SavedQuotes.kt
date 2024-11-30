@@ -2,12 +2,16 @@ package com.example.quotebloom
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Card
+import androidx.compose.material.FloatingActionButton
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.MaterialTheme
@@ -16,6 +20,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -27,11 +32,17 @@ import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
+data class QuoteData(
+    val documentId: String,
+    val quote: String,
+    val author: String
+)
+
 @Composable
 fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
     val user = mAuth.currentUser
     val firestore = FirebaseFirestore.getInstance()
-    val savedQuotes = remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+    val savedQuotes = remember { mutableStateOf<List<QuoteData>>(emptyList()) }
 
     LaunchedEffect(Unit) {
         if (user != null) {
@@ -41,7 +52,11 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
                 .get()
                 .addOnSuccessListener { snapshot ->
                     val quotes = snapshot.documents.map {
-                        Pair(it.getString("quote") ?: "", it.getString("author") ?: "")
+                        QuoteData(
+                            documentId = it.id,
+                            quote = it.getString("quote") ?: "",
+                            author = it.getString("author") ?: ""
+                        )
                     }
                     savedQuotes.value = quotes
                 }
@@ -58,6 +73,27 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            if (savedQuotes.value.isNotEmpty()) {
+                FloatingActionButton(
+                    onClick = {
+                        if (user != null) {
+                            firestore.collection("users")
+                                .document(user.uid)
+                                .collection("savedQuotes")
+                                .get()
+                                .addOnSuccessListener { snapshot ->
+                                    snapshot.documents.forEach { it.reference.delete() }
+                                    savedQuotes.value = emptyList()
+                                }
+                        }
+                    },
+                    backgroundColor = MaterialTheme.colors.primary
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete All Saved Quotes")
+                }
+            }
         }
     ) { paddingValues ->
         Box(
@@ -69,18 +105,41 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
             if (savedQuotes.value.isEmpty()) {
                 Text("No saved quotes yet!", style = MaterialTheme.typography.h6)
             } else {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    savedQuotes.value.forEach { (quote, author) ->
+                LazyColumn(modifier = Modifier.padding(16.dp)) {
+                    items(savedQuotes.value, key = {it.documentId }) { quoteData ->
                         Card(
                             elevation = 4.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(text = quote, style = MaterialTheme.typography.body1)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(text = " - $author", style = MaterialTheme.typography.body2, modifier = Modifier.align(Alignment.End))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(text = quoteData.quote, style = MaterialTheme.typography.body1)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = " - ${quoteData.author}",
+                                        style = MaterialTheme.typography.body2,
+                                        modifier = Modifier.align(Alignment.End)
+                                    )
+                                }
+                                IconButton(onClick = {
+                                    if (user != null) {
+                                        firestore.collection("users")
+                                            .document(user.uid)
+                                            .collection("savedQuotes")
+                                            .document(quoteData.documentId)
+                                            .delete()
+                                            .addOnSuccessListener {
+                                                savedQuotes.value = savedQuotes.value.filter { it.documentId != quoteData.documentId }
+                                            }
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete Quote")
+                                }
                             }
                         }
                     }
