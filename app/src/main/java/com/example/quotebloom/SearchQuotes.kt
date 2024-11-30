@@ -1,4 +1,4 @@
-package com.example.quotesofwisdom
+package com.example.quotebloom
 
 import android.util.Log
 import androidx.compose.foundation.clickable
@@ -17,8 +17,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.launch
-import retrofit2.http.GET
-import retrofit2.http.Query
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -184,12 +182,6 @@ suspend fun fetchQuoteByCategory(category: String, api: QuoteApiService): Pair<S
         null
     }
 }
-
-@GET("quotes")
-suspend fun searchQuotesByCategory(
-    @Query("category") category: String,
-    @Header("X-Api-Key") apiKey: String
-): List<Quote>
 
 data class Quote(
     val quote: String,

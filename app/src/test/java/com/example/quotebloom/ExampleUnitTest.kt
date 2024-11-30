@@ -1,4 +1,4 @@
-package com.example.quotesofwisdom
+package com.example.quotebloom
 
 import org.junit.Test
 

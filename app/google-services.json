@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "761856013679",
+    "project_id": "quote-bloom",
+    "storage_bucket": "quote-bloom.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:761856013679:android:098be46a1a6eb895a0649a",
+        "android_client_info": {
+          "package_name": "com.example.quotebloom"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "761856013679-l746ckbjd1egjvcaotsk7g77bt2stc62.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.quotebloom",
+            "certificate_hash": "e6e54ff63db4f7740f16f5c05d7b43b6c7975fe8"
+          }
+        },
+        {
+          "client_id": "761856013679-u0vgcibdhavl5n3dld6e020voh623c71.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkYBfo2PxdqEvnsPAOyYUYARk-IiIC-vQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "761856013679-u0vgcibdhavl5n3dld6e020voh623c71.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,4 @@
-package com.example.quotesofwisdom.ui.theme
+package com.example.quotebloom.ui.theme
 
 import android.app.Activity
 import android.os.Build
