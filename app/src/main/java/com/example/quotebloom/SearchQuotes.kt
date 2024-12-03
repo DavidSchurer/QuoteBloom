@@ -1,6 +1,8 @@
 package com.example.quotebloom
 
+import android.content.Context
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -200,7 +202,8 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                                 firestore = firestore,
                                 userId = currentUser?.uid ?: "",
                                 quote = quote,
-                                author = author
+                                author = author,
+                                context = context
                             )
                         },
                         modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -215,7 +218,7 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
     }
 }
 
-fun saveQuoteToFirebase(firestore: FirebaseFirestore, userId: String, quote: String, author: String) {
+fun saveQuoteToFirebase(firestore: FirebaseFirestore, userId: String, quote: String, author: String, context: Context) {
     if (userId.isBlank()) {
         Log.e("SavedQuote", "User not authenticated.")
         return
@@ -231,7 +234,11 @@ fun saveQuoteToFirebase(firestore: FirebaseFirestore, userId: String, quote: Str
             .collection("savedQuotes")
             .add(quoteData)
             .addOnSuccessListener {
-                Log.d("SavedQuote", "Quote successfully saved.")
+                Toast.makeText(
+                    context,
+                    "Quote saved successfully",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
             .addOnFailureListener { e ->
                 Log.e("SavedQuote", "Error saving quote: ${e.message}", e)
