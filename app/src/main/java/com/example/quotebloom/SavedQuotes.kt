@@ -1,5 +1,7 @@
 package com.example.quotebloom
 
+import android.content.Context
+import android.content.Intent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,12 +24,14 @@ import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
@@ -44,6 +48,7 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
     val user = mAuth.currentUser
     val firestore = FirebaseFirestore.getInstance()
     val savedQuotes = remember { mutableStateOf<List<QuoteData>>(emptyList()) }
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         if (user != null) {
@@ -128,6 +133,14 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
                                     )
                                 }
                                 IconButton(onClick = {
+                                    shareQuote(context, quoteData.quote, quoteData.author)
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = "Share Quote"
+                                    )
+                                }
+                                IconButton(onClick = {
                                     if (user != null) {
                                         firestore.collection("users")
                                             .document(user.uid)
@@ -153,4 +166,18 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
         }
 
     }
+}
+
+fun shareQuote(context: Context, quote: String, author: String) {
+    val shareIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(Intent.EXTRA_TEXT, "\"$quote\"\n\n— $author")
+        type = "text/plain"
+    }
+    context.startActivity(
+        Intent.createChooser(
+            shareIntent,
+            "Share Quote via"
+        )
+    )
 }

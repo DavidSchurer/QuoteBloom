@@ -25,6 +25,7 @@ import androidx.compose.material.TextField
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,6 +35,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -64,6 +67,9 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
     val coroutineScope = rememberCoroutineScope()
     val firestore = FirebaseFirestore.getInstance()
     val currentUser = mAuth.currentUser
+    val context = LocalContext.current
+
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Scaffold(
         topBar = {
@@ -103,6 +109,8 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                                 author = a
                             }
                         }
+                        keyboardController?.hide()
+                        filteredCategories = emptyList()
                     }
                 })
             )
@@ -110,21 +118,25 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Display the filtered categories
-            LazyColumn {
-                items(filteredCategories) { category ->
-                    ListItem(
-                        text = { Text(category) },
-                        modifier = Modifier.clickable {
-                            selectedCategory = category
-                            coroutineScope.launch {
-                                // Fetch the quote for the selected category
-                                fetchQuoteByCategory(selectedCategory, api)?.let { (q, a) ->
-                                    quote = q
-                                    author = a
+            if (filteredCategories.isNotEmpty()) {
+                LazyColumn {
+                    items(filteredCategories) { category ->
+                        ListItem(
+                            text = { Text(category) },
+                            modifier = Modifier.clickable {
+                                selectedCategory = category
+                                coroutineScope.launch {
+                                    // Fetch the quote for the selected category
+                                    fetchQuoteByCategory(selectedCategory, api)?.let { (q, a) ->
+                                        quote = q
+                                        author = a
+                                    }
                                 }
+                                keyboardController?.hide()
+                                filteredCategories = emptyList()
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
 
@@ -148,26 +160,38 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                 }
 
                 if (quote.isNotEmpty()) {
-                    Card(
-                        elevation = 4.dp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = quote,
-                                style = MaterialTheme.typography.body1
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "- $author",
-                                style = MaterialTheme.typography.body2,
-                                modifier = Modifier.align(Alignment.End)
-                            )
+                        Card(
+                            elevation = 4.dp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = quote,
+                                    style = MaterialTheme.typography.body1
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "- $author",
+                                    style = MaterialTheme.typography.body2,
+                                    modifier = Modifier.align(Alignment.End)
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+                                IconButton(
+                                    onClick = {
+                                        shareQuote(context = context, quote = quote, author = author)
+                                    },
+                                    modifier = Modifier.align(Alignment.Start)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = "Share Quote"
+                                    )
+                            }
                         }
                     }
-
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Button(

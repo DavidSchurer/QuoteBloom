@@ -175,7 +175,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                             onClick = {
                                 val shareIntent = Intent().apply {
                                     action = Intent.ACTION_SEND
-                                    putExtra(Intent.EXTRA_TEXT, "\"$quote\"\n\n— $author")
+                                    putExtra(Intent.EXTRA_TEXT, "\"$quote\"\n\n—$author")
                                     type = "text/plain"
                                 }
                                 context.startActivity(
