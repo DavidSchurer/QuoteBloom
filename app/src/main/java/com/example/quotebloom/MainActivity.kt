@@ -62,6 +62,9 @@ fun QuotesApp(mAuth: FirebaseAuth) {
         composable("savedQuotes") {
             SavedQuotes(navController, mAuth)
         }
+        composable("customQuotes") {
+            CustomQuotesScreen(navController, mAuth)
+        }
     }
 }
 
@@ -132,6 +135,17 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
             }
         }
     ) { paddingValues ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Button(
+                onClick = { navController.navigate("customQuotes") },
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Text("Custom Quotes")
+            }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -202,10 +216,18 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                                     .collection("savedQuotes")
                                     .add(quoteData)
                                     .addOnSuccessListener {
-                                        Toast.makeText(context, "Quote saved successfully", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            "Quote saved successfully",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                     .addOnFailureListener {
-                                        Toast.makeText(context, "Error saving quote", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(
+                                            context,
+                                            "Error saving quote",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                             }
                         },
@@ -216,6 +238,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                 }
             }
         }
+    }
     }
 }
 

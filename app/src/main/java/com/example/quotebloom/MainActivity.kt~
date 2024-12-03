@@ -62,6 +62,9 @@ fun QuotesApp(mAuth: FirebaseAuth) {
         composable("savedQuotes") {
             SavedQuotes(navController, mAuth)
         }
+        composable("customQuotes") {
+            CustomQuotesScreen(navController, mAuth)
+        }
     }
 }
 
@@ -132,6 +135,18 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
             }
         }
     ) { paddingValues ->
+        Column(
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Button(
+                onClick = { navController.navigate("customQuotes") },
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Text("Custom Quotes")
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -175,7 +190,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                             onClick = {
                                 val shareIntent = Intent().apply {
                                     action = Intent.ACTION_SEND
-                                    putExtra(Intent.EXTRA_TEXT, "\"$quote\"\n\n—$author")
+                                    putExtra(Intent.EXTRA_TEXT, "\"$quote\"\n\n— $author")
                                     type = "text/plain"
                                 }
                                 context.startActivity(
