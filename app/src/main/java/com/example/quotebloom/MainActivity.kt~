@@ -355,7 +355,7 @@ fun saveQuoteToPreferences(context: Context, quote: String, author: String, time
 fun getQuoteFromPreferences(context: Context): Triple<String, String, Long>? {
     val sharedPreferences: SharedPreferences = context.getSharedPreferences("QuotePrefs", Context.MODE_PRIVATE)
     val quote = sharedPreferences.getString("quote", null)
-    val author = sharedPreferences.getString("author", null)
+    val author = sharedPreferences.getString("quote", null)
     val timestamp = sharedPreferences.getLong("timestamp", 0)
 
     return if (quote != null && author != null) {
