@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -90,7 +91,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("QuoteBloom", style = MaterialTheme.typography.h6)
                         Text(
-                            "Inspire, discover, share, and save quotes that mean something.",
+                            "Inspire, discover, share, and save meaningful quotes.",
                             style = MaterialTheme.typography.caption.copy(fontStyle = FontStyle.Italic),
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth()
@@ -154,6 +155,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
         ) {
             var quote by remember { mutableStateOf("Fetching quote...") }
             var author by remember { mutableStateOf("") }
+            var shuffleTriggered by remember { mutableStateOf(false) }
 
             LaunchedEffect(Unit) {
                 val fetchedQuote = fetchRandomQuote()
@@ -165,75 +167,113 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                 }
             }
 
-            Card(
-                elevation = 4.dp,
-                modifier = Modifier.padding(16.dp)
+            LaunchedEffect(shuffleTriggered) {
+                if (shuffleTriggered) {
+                    val newQuote = fetchRandomQuote()
+                    if (newQuote != null) {
+                        quote = newQuote.first
+                        author = newQuote.second
+                    } else {
+                        quote = "Error fetching new quote."
+                    }
+                    shuffleTriggered = false
+                }
+            }
+
+            Column (
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = quote,
-                        style = MaterialTheme.typography.body1
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = " - $author",
-                        style = MaterialTheme.typography.body2,
-                        modifier = Modifier.align(Alignment.End)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
+                // QOTD Heading
+                Text(
+                    text = "Quote of the Day",
+                    style = MaterialTheme.typography.h5,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                // QOTD Quote Card
+                Card(
+                    elevation = 4.dp,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = quote,
+                            style = MaterialTheme.typography.body1
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = " - $author",
+                            style = MaterialTheme.typography.body2,
+                            modifier = Modifier.align(Alignment.End)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    val shareIntent = Intent().apply {
+                                        action = Intent.ACTION_SEND
+                                        putExtra(Intent.EXTRA_TEXT, "\"$quote\"\n\n— $author")
+                                        type = "text/plain"
+                                    }
+                                    context.startActivity(
+                                        Intent.createChooser(
+                                            shareIntent,
+                                            "Share Quote via"
+                                        )
+                                    )
+                                },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = "Share Quote"
+                                )
+                            }
+                        }
                         IconButton(
                             onClick = {
-                                val shareIntent = Intent().apply {
-                                    action = Intent.ACTION_SEND
-                                    putExtra(Intent.EXTRA_TEXT, "\"$quote\"\n\n— $author")
-                                    type = "text/plain"
-                                }
-                                context.startActivity(
-                                    Intent.createChooser(
-                                        shareIntent,
-                                        "Share Quote via"
-                                    )
-                                )
+                                shuffleTriggered = true
                             },
                             modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Share Quote"
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Shuffle Quote"
                             )
                         }
-                    }
-                    Button(
-                        onClick = {
-                            if (user != null) {
-                                val quoteData = mapOf("quote" to quote, "author" to author)
-                                firestore.collection("users")
-                                    .document(user.uid)
-                                    .collection("savedQuotes")
-                                    .add(quoteData)
-                                    .addOnSuccessListener {
-                                        Toast.makeText(
-                                            context,
-                                            "Quote saved successfully",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                    .addOnFailureListener {
-                                        Toast.makeText(
-                                            context,
-                                            "Error saving quote",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                            }
-                        },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text("Save This Quote")
+                        Button(
+                            onClick = {
+                                if (user != null) {
+                                    val quoteData = mapOf("quote" to quote, "author" to author)
+                                    firestore.collection("users")
+                                        .document(user.uid)
+                                        .collection("savedQuotes")
+                                        .add(quoteData)
+                                        .addOnSuccessListener {
+                                            Toast.makeText(
+                                                context,
+                                                "Quote saved successfully",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        .addOnFailureListener {
+                                            Toast.makeText(
+                                                context,
+                                                "Error saving quote",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                }
+                            },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Save This Quote")
+                        }
                     }
                 }
             }
@@ -273,7 +313,7 @@ object RetrofitInstance {
 
 suspend fun fetchRandomQuote(): Pair<String, String>? {
     return try {
-        val apiKey = "NDmlYdnYfqoqnD8jzYulNQ==Air34IWPfvH2FfG2"  // Replace with your actual API key
+        val apiKey = "NDmlYdnYfqoqnD8jzYulNQ==Air34IWPfvH2FfG2"
         val response = RetrofitInstance.api.getRandomQuote(apiKey)
 
         if (response.isNotEmpty()) {
