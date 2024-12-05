@@ -7,15 +7,20 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -46,7 +51,11 @@ class MainActivity : ComponentActivity() {
             finish()
         } else {
             setContent {
-                QuotesApp(mAuth)
+                Box(modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF121212))) {
+                    QuotesApp(mAuth)
+                }
             }
         }
     }
@@ -55,18 +64,20 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun QuotesApp(mAuth: FirebaseAuth) {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "main") {
-        composable("main") {
-            MainPage(navController, mAuth)
-        }
-        composable("search") {
-            SearchQuotes(navController, api = RetrofitInstance.api, mAuth)
-        }
-        composable("savedQuotes") {
-            SavedQuotes(navController, mAuth)
-        }
-        composable("customQuotes") {
-            CustomQuotesScreen(navController, mAuth)
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF121212))) {
+        NavHost(navController = navController, startDestination = "main") {
+            composable("main") {
+                MainPage(navController, mAuth)
+            }
+            composable("search") {
+                SearchQuotes(navController, api = RetrofitInstance.api, mAuth)
+            }
+            composable("savedQuotes") {
+                SavedQuotes(navController, mAuth)
+            }
+            composable("customQuotes") {
+                CustomQuotesScreen(navController, mAuth)
+            }
         }
     }
 }
@@ -91,15 +102,16 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
             TopAppBar(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("QuoteBloom", style = MaterialTheme.typography.h6)
+                        Text("QuoteBloom", color = Color.White, style = MaterialTheme.typography.h6)
                         Text(
                             "Inspire, discover, share, and save meaningful quotes.",
-                            style = MaterialTheme.typography.caption.copy(fontStyle = FontStyle.Italic),
+                            style = MaterialTheme.typography.subtitle2.copy(fontStyle = FontStyle.Italic, color = Color.White),
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                         )
                     }
                 },
+                backgroundColor = Color(0xFF232323),
                 actions = {
                     IconButton(onClick = {
                         mGoogleSignInClient.signOut().addOnCompleteListener {
@@ -112,43 +124,38 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                             }
                         }
                     }) {
-                        Icon(Icons.Filled.ExitToApp, contentDescription = "Logout")
+                        Icon(Icons.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White)
                     }
                 }
             )
         },
         bottomBar = {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+            BottomNavigation(
+                backgroundColor = Color(0xFF232323),
+                contentColor = Color.White
             ) {
-                Button(
-                    onClick = { navController.navigate("search") },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Search for Quotes")
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = { navController.navigate("savedQuotes") },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Saved Quotes")
-                }
+                BottomNavigationItem(
+                    icon = { Icon(Icons.Filled.Search, contentDescription = "Search for Quotes") },
+                    label = { Text("Search") },
+                    selected = false,
+                    onClick = { navController.navigate("search") }
+                )
+                BottomNavigationItem(
+                    icon = { Icon(Icons.Filled.Favorite, contentDescription = "Saved Quotes") },
+                    label = { Text("Saved") },
+                    selected = false,
+                    onClick = { navController.navigate("savedQuotes") }
+                )
+                BottomNavigationItem(
+                    icon = { Icon(Icons.Filled.Create, contentDescription = "Custom Quotes") },
+                    label = { Text("Custom Quotes") },
+                    selected = false,
+                    onClick = { navController.navigate("customQuotes") }
+                )
             }
-        }
+        },
+        backgroundColor = Color(0xFF121212)
     ) { paddingValues ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(paddingValues),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Button(
-                onClick = { navController.navigate("customQuotes") },
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Text("Custom Quotes")
-            }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -204,23 +211,26 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                 // QOTD Heading
                 Text(
                     text = "Quote of the Day",
-                    style = MaterialTheme.typography.h5,
+                    style = MaterialTheme.typography.h5.copy(color = Color.White),
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 // QOTD Quote Card
                 Card(
                     elevation = 4.dp,
-                    modifier = Modifier.padding(16.dp)
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.padding(16.dp),
+                    backgroundColor = Color(0xFF232323)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = quote,
-                            style = MaterialTheme.typography.body1
+                            style = MaterialTheme.typography.body1.copy(color = Color.White),
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = " - $author",
-                            style = MaterialTheme.typography.body2,
+                            style = MaterialTheme.typography.body2.copy(fontStyle = FontStyle.Italic, color = Color.White),
                             modifier = Modifier.align(Alignment.End)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -246,7 +256,8 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Share,
-                                    contentDescription = "Share Quote"
+                                    contentDescription = "Share Quote",
+                                    tint = Color.White
                                 )
                             }
                         }
@@ -258,7 +269,8 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Refresh,
-                                contentDescription = "Shuffle Quote"
+                                contentDescription = "Shuffle Quote",
+                                tint = Color.White
                             )
                         }
                         Button(
@@ -285,15 +297,16 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                                         }
                                 }
                             },
-                            modifier = Modifier.align(Alignment.End)
+                            modifier = Modifier.align(Alignment.End),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
                         ) {
-                            Text("Save This Quote")
+                            Text("Save This Quote", color = Color.White)
                         }
                     }
                 }
             }
         }
-    }
+
     }
 }
 
