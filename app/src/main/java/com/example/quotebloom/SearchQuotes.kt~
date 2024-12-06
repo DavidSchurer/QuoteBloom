@@ -1,8 +1,8 @@
 package com.example.quotebloom
 
+import android.content.Context
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,21 +11,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
-import androidx.compose.material.ListItem
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Scaffold
 import androidx.compose.material.Text
-import androidx.compose.material.TextField
+import androidx.compose.material.TextButton
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,9 +37,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
@@ -58,10 +60,9 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
         "home", "hope", "humor", "imagination", "inspirational", "intelligence", "jealousy",
         "knowledge", "leadership", "learning", "legal", "life", "love", "marriage", "medical",
         "men", "mom", "money", "morning", "movies", "success"
-    )
+    ).sorted()
 
-    var query by remember { mutableStateOf("") }
-    var filteredCategories by remember { mutableStateOf(allCategories) }
+    var showDialog by remember { mutableStateOf(false) }
     var selectedCategory by remember { mutableStateOf("") }
     var quote by remember { mutableStateOf("") }
     var author by remember { mutableStateOf("") }
@@ -75,14 +76,16 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Search Quotes") },
+                title = { Text("Search Quotes", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
-                }
+                },
+                backgroundColor = Color(0xFF232323)
             )
-        }
+        },
+        backgroundColor = Color(0xFF121212)
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -90,66 +93,31 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            // Search bar to search for quote categories
-            TextField(
-                value = query,
-                onValueChange = {
-                    query = it
-                    filteredCategories = allCategories.filter { category ->
-                        category.contains(query, ignoreCase = true)
-                    }
-                },
+            // Button to trigger popup for quote category selection
+            Button(
+                onClick = { showDialog = true },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Search for categories...") },
-                keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = {
-                    if (query.isNotBlank()) {
-                        coroutineScope.launch {
-                            fetchQuoteByCategory(selectedCategory, api)?.let { (q, a) ->
-                                quote = q
-                                author = a
-                            }
-                        }
-                        keyboardController?.hide()
-                        filteredCategories = emptyList()
-                    }
-                })
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Display the filtered categories
-            if (filteredCategories.isNotEmpty()) {
-                LazyColumn {
-                    items(filteredCategories) { category ->
-                        ListItem(
-                            text = { Text(category) },
-                            modifier = Modifier.clickable {
-                                selectedCategory = category
-                                coroutineScope.launch {
-                                    // Fetch the quote for the selected category
-                                    fetchQuoteByCategory(selectedCategory, api)?.let { (q, a) ->
-                                        quote = q
-                                        author = a
-                                    }
-                                }
-                                keyboardController?.hide()
-                                filteredCategories = emptyList()
-                            }
-                        )
-                    }
-                }
+                colors = ButtonDefaults.buttonColors(
+                    backgroundColor = Color(0xFF232323)  // Set the button background color here
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search Icon",
+                    tint = Color.White,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                Text("Search Quote by Category", color = Color.White)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Display the selected category and the quote for that specific category
             if (selectedCategory.isNotEmpty()) {
-                Text("Selected Category: $selectedCategory", style = MaterialTheme.typography.h6)
+                Text("Selected Category: $selectedCategory", style = MaterialTheme.typography.h6, color = Color.White)
                 Spacer(modifier = Modifier.height(8.dp))
 
                 LaunchedEffect(selectedCategory) {
-                    Log.d("SearchQuotes", "LaunchedEffect triggered for category: $selectedCategory")
                     val fetchedQuote = fetchQuoteByCategory(selectedCategory, api)
                     if (fetchedQuote != null) {
                         quote = fetchedQuote.first
@@ -165,18 +133,21 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                             elevation = 4.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
+                                .padding(vertical = 4.dp),
+                            backgroundColor = Color(0xFF232323)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
                                     text = quote,
-                                    style = MaterialTheme.typography.body1
+                                    style = MaterialTheme.typography.body1,
+                                    color = Color.White
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "- $author",
                                     style = MaterialTheme.typography.body2,
-                                    modifier = Modifier.align(Alignment.End)
+                                    modifier = Modifier.align(Alignment.End),
+                                    color = Color.White
                                 )
 
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -188,8 +159,30 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Share,
-                                        contentDescription = "Share Quote"
+                                        contentDescription = "Share Quote",
+                                        tint = Color.White
                                     )
+                            }
+                            IconButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        val newQuote = fetchQuoteByCategory(selectedCategory, api)
+                                        if (newQuote != null) {
+                                            quote = newQuote.first
+                                            author = newQuote.second
+                                        } else {
+                                            quote = "No quote found."
+                                            author = ""
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.align(Alignment.Start)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Shuffle Quote",
+                                    tint = Color.White
+                                )
                             }
                         }
                     }
@@ -205,13 +198,51 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                                 context = context
                             )
                         },
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = Color(0xFF383838)
+                        )
                     ) {
-                        Text("Save This Quote")
+                        Text("Save This Quote", color = Color.White)
                     }
                 } else {
-                    Text("Loading quote...", style = MaterialTheme.typography.body2)
+                    Text("Loading quote...", style = MaterialTheme.typography.body2, color = Color.White)
                 }
+            }
+
+            // Popup Dialog for quote category selection
+            if (showDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDialog = false },
+                    title = { Text("Select a Category", color = Color.White) },
+                    text = {
+                        LazyColumn {
+                            items(allCategories) { category ->
+                                Button(
+                                    onClick = {
+                                        selectedCategory = category
+                                        showDialog = false
+                                    },
+                                    shape = CircleShape,
+                                    modifier = Modifier
+                                        .padding(4.dp)
+                                        .fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = Color(0xFF383838)
+                                    )
+                                ) {
+                                    Text(category, textAlign = TextAlign.Center, color = Color.White)
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showDialog = false }) {
+                            Text("Close", color = Color.White)
+                        }
+                    },
+                    backgroundColor = Color(0xFF232323)
+                )
             }
         }
     }
