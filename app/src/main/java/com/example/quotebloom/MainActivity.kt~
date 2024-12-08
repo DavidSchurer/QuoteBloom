@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -424,7 +425,7 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
                 updateLikeDislike(false)
             },
             modifier = Modifier.size(48.dp),
-            enabled = !userDisliked.value
+            enabled = true
         ) {
             Icon(
                 imageVector = if (userDisliked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
@@ -521,6 +522,41 @@ fun getQuoteFromPreferences(context: Context): Triple<String, String, Long>? {
         Triple(quote, author, timestamp)
     } else {
         null
+    }
+}
+
+fun saveQuoteToFirestore(
+    firestore: FirebaseFirestore,
+    mAuth: FirebaseAuth,
+    quote: String,
+    author: String,
+    likes: Int = 0,
+    dislikes: Int = 0,
+    userLiked: Boolean = false,
+    userDisliked: Boolean = false
+) {
+    val user = mAuth.currentUser
+    if (user != null) {
+        val quoteData = mapOf(
+            "quote" to quote,
+            "author" to author,
+            "likes" to likes,
+            "dislikes" to dislikes,
+            "userLiked" to userLiked,
+            "userDisliked" to userDisliked
+        )
+        firestore.collection("users")
+            .document(user.uid)
+            .collection("savedQuotes")
+            .add(quoteData)
+            .addOnSuccessListener {
+                Log.d("SaveQuote", "Quote successfully saved!")
+            }
+            .addOnFailureListener { e ->
+                Log.e("SaveQuote", "Error saving quote: ", e)
+            }
+    } else {
+        Log.e("SaveQuote", "User is not authenticated!")
     }
 }
 

@@ -3,12 +3,15 @@ package com.example.quotebloom
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -26,8 +29,11 @@ import androidx.compose.material.TextButton
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -184,27 +191,37 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                                     tint = Color.White
                                 )
                             }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    LikesDislikesButtons(quoteId = quote, firestore = firestore)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        saveQuoteToFirebase(
+                                            firestore = firestore,
+                                            userId = currentUser?.uid ?: "",
+                                            quote = quote,
+                                            author = author,
+                                            context = context
+                                        )
+                                    },
+                                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                                    colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = Color(0xFF383838)
+                                    )
+                                ) {
+                                    Text("Save This Quote", color = Color.White)
+                                }
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Button(
-                        onClick = {
-                            saveQuoteToFirebase(
-                                firestore = firestore,
-                                userId = currentUser?.uid ?: "",
-                                quote = quote,
-                                author = author,
-                                context = context
-                            )
-                        },
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                        colors = ButtonDefaults.buttonColors(
-                            backgroundColor = Color(0xFF383838)
-                        )
-                    ) {
-                        Text("Save This Quote", color = Color.White)
-                    }
                 } else {
                     Text("Loading quote...", style = MaterialTheme.typography.body2, color = Color.White)
                 }
@@ -245,6 +262,124 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                 )
             }
         }
+    }
+}
+
+@Composable
+fun LikesDislikesButtonsSearchQuotes(quoteId: String, firestore: FirebaseFirestore) {
+    val currentUser = FirebaseAuth.getInstance().currentUser
+    val likes = remember { mutableStateOf(0) }
+    val dislikes = remember { mutableStateOf(0) }
+    val userLiked = remember { mutableStateOf(false) }
+    val userDisliked = remember { mutableStateOf(false) }
+
+    // If the quote doesn't exist in firebase, add it to the firebase database
+    LaunchedEffect(quoteId) {
+        firestore.collection("quotes").document(quoteId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (!document.exists()) {
+                    val quoteData = mapOf(
+                        "likes" to 0,
+                        "dislikes" to 0,
+                        "quoteText" to quoteId
+                    )
+                    firestore.collection("quotes").document(quoteId).set(quoteData)
+                }
+            }
+    }
+
+    // Real-time listener for likes, dislikes, and user interactions
+    LaunchedEffect(quoteId) {
+        firestore.collection("quotes").document(quoteId)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null && snapshot.exists()) {
+                    likes.value = snapshot.getLong("likes")?.toInt() ?: 0
+                    dislikes.value = snapshot.getLong("dislikes")?.toInt() ?: 0
+                    val userLikedList = snapshot.get("userLiked") as? List<String> ?: emptyList()
+                    val userDislikedList = snapshot.get("userDisliked") as? List<String> ?: emptyList()
+                    currentUser?.email?.let { email ->
+                        userLiked.value = email in userLikedList
+                        userDisliked.value = email in userDislikedList
+                    }
+                }
+            }
+    }
+
+    fun updateLikeDislike(isLike: Boolean) {
+        val email = currentUser?.email ?: return
+        firestore.runTransaction { transaction ->
+            val quoteRef = firestore.collection("quotes").document(quoteId)
+            val snapshot = transaction.get(quoteRef)
+            val userLikedList = snapshot.get("userLiked") as? List<String> ?: emptyList()
+            val userDislikedList = snapshot.get("userDisliked") as? List<String> ?: emptyList()
+
+            val updates = mutableMapOf<String, Any>()
+            if (isLike) {
+                if (userLiked.value) { // Undo the like if already liked
+                    updates["likes"] = (snapshot.getLong("likes") ?: 0) - 1
+                    updates["userLiked"] = userLikedList - email
+                } else { // Add like if not liked
+                    updates["likes"] = (snapshot.getLong("likes") ?: 0) + 1
+                    updates["userLiked"] = userLikedList + email
+                    if (email in userDislikedList) {
+                        updates["dislikes"] = (snapshot.getLong("dislikes") ?: 0) - 1
+                        updates["userDisliked"] = userDislikedList - email
+                    }
+                }
+            } else {
+                if (userDisliked.value) { // Undo the dislike if already disliked
+                    updates["dislikes"] = (snapshot.getLong("dislikes") ?: 0) - 1
+                    updates["userDisliked"] = userDislikedList - email
+                } else { // Add dislike if not disliked
+                    updates["dislikes"] = (snapshot.getLong("dislikes") ?: 0) + 1
+                    updates["userDisliked"] = userDislikedList + email
+                    if (email in userLikedList) {
+                        updates["likes"] = (snapshot.getLong("likes") ?: 0) - 1
+                        updates["userLiked"] = userLikedList - email
+                    }
+                }
+            }
+            transaction.update(quoteRef, updates)
+        }
+    }
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Like Button
+        IconButton(
+            onClick = {
+                updateLikeDislike(true)
+            },
+            modifier = Modifier.size(48.dp),
+            enabled = true
+        ) {
+            Icon(
+                imageVector = if (userLiked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                contentDescription = "Like",
+                tint = if (userLiked.value) Color.Green else Color.White
+            )
+        }
+        Text(text = likes.value.toString(), color = Color.White)
+
+        // Dislike Button
+        IconButton(
+            onClick = {
+                updateLikeDislike(false)
+            },
+            modifier = Modifier.size(48.dp),
+            enabled = true
+        ) {
+            Icon(
+                imageVector = if (userDisliked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                contentDescription = "Dislike",
+                tint = if (userDisliked.value) Color.Red else Color.White,
+                modifier = Modifier.rotate(180f)
+            )
+        }
+        Text(text = dislikes.value.toString(), color = Color.White)
     }
 }
 

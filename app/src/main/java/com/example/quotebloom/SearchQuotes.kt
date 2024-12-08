@@ -3,7 +3,9 @@ package com.example.quotebloom
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -185,27 +187,37 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                                     tint = Color.White
                                 )
                             }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    LikesDislikesButtons(quoteId = quote, firestore = firestore)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        saveQuoteToFirebase(
+                                            firestore = firestore,
+                                            userId = currentUser?.uid ?: "",
+                                            quote = quote,
+                                            author = author,
+                                            context = context
+                                        )
+                                    },
+                                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                                    colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = Color(0xFF383838)
+                                    )
+                                ) {
+                                    Text("Save This Quote", color = Color.White)
+                                }
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Button(
-                        onClick = {
-                            saveQuoteToFirebase(
-                                firestore = firestore,
-                                userId = currentUser?.uid ?: "",
-                                quote = quote,
-                                author = author,
-                                context = context
-                            )
-                        },
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                        colors = ButtonDefaults.buttonColors(
-                            backgroundColor = Color(0xFF383838)
-                        )
-                    ) {
-                        Text("Save This Quote", color = Color.White)
-                    }
                 } else {
                     Text("Loading quote...", style = MaterialTheme.typography.body2, color = Color.White)
                 }

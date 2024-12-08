@@ -164,7 +164,7 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
                                     modifier = Modifier
                                         .padding(start = 8.dp)
                                         .padding(8.dp)
-                                    ) {
+                                ) {
                                     Icon(Icons.Default.Delete, contentDescription = "Delete Quote", tint = Color.White)
                                 }
                             }

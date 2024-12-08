@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -522,6 +523,26 @@ fun getQuoteFromPreferences(context: Context): Triple<String, String, Long>? {
     } else {
         null
     }
+}
+
+fun saveQuoteToFirestore(firestore: FirebaseFirestore, userId: String, quoteId: String) {
+    val savedQuote = hashMapOf(
+        "quoteId" to quoteId,
+        "userLiked" to false,
+        "userDisliked" to false
+    )
+
+    firestore.collection("users")
+        .document(userId)
+        .collection("savedQuotes")
+        .document(quoteId)
+        .set(savedQuote)
+        .addOnSuccessListener {
+            Log.d("saveQuoteToFirestore", "Quote saved")
+        }
+        .addOnFailureListener { e ->
+            Log.w("saveQuoteToFirestore", "Failed to save quote", e)
+        }
 }
 
 data class QuoteSearchResponse(val results: List<QuoteResult>)
