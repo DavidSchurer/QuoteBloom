@@ -17,9 +17,12 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
@@ -32,7 +35,9 @@ import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
@@ -180,6 +185,10 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                     if (fetchedQuote != null) {
                         quote = fetchedQuote.first
                         author = fetchedQuote.second
+                        //Add quote to firestore in order to track likes/dislikes
+                        addQuoteToFirestoreIfNotExists(firestore, quote, author)
+                        // Saved quote to preferences in order to display quote of the day
+                        // for 24 hours and prevent quote changing on app restart/navigation
                         saveQuoteToPreferences(context, quote, author, currentTime)
                     } else {
                         quote = "Error fetching quote."
@@ -234,6 +243,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                             modifier = Modifier.align(Alignment.End)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
+                        LikesDislikesButtons(quoteId = quote, firestore = firestore)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -310,6 +320,119 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
     }
 }
 
+@Composable
+fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
+    val likes = remember { mutableStateOf(0) }
+    val dislikes = remember { mutableStateOf(0) }
+    val userLiked = remember { mutableStateOf(false) }
+    val userDisliked = remember { mutableStateOf(false) }
+    var currentQuoteId by remember { mutableStateOf(quoteId) }
+
+    // userLiked and userDisliked states need to be reset when the quoteId changes
+    LaunchedEffect(quoteId) {
+        if (currentQuoteId != quoteId) {
+            userLiked.value = false
+            userDisliked.value = false
+            currentQuoteId = quoteId
+        }
+    }
+
+    // Ensure the quote exists in Firestore
+    LaunchedEffect(quoteId) {
+        firestore.collection("quotes").document(quoteId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (!document.exists()) {
+                    val quoteData = mapOf(
+                        "likes" to 0,
+                        "dislikes" to 0,
+                        "quoteText" to quoteId
+                    )
+                    firestore.collection("quotes").document(quoteId).set(quoteData)
+                }
+            }
+    }
+
+    // Real-time listener for likes and dislikes
+    LaunchedEffect(quoteId) {
+        firestore.collection("quotes").document(quoteId)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null && snapshot.exists()) {
+                    likes.value = snapshot.getLong("likes")?.toInt() ?: 0
+                    dislikes.value = snapshot.getLong("dislikes")?.toInt() ?: 0
+                }
+            }
+    }
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Like Button
+        IconButton(
+            onClick = {
+                if (userLiked.value) {
+                    // Undo like
+                    likes.value -= 1
+                    userLiked.value = false
+                    firestore.collection("quotes").document(quoteId)
+                        .update("likes", FieldValue.increment(-1))
+                } else {
+                    if (userDisliked.value) {
+                        dislikes.value -= 1
+                        userDisliked.value = false
+                        firestore.collection("quotes").document(quoteId)
+                            .update("dislikes", FieldValue.increment(-1))
+                    }
+                    likes.value += 1
+                    userLiked.value = true
+                    firestore.collection("quotes").document(quoteId)
+                        .update("likes", FieldValue.increment(1))
+                }
+            }
+        ) {
+            Icon(
+                imageVector = if (userLiked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                contentDescription = "Like",
+                tint = if (userLiked.value) Color.Green else Color.White
+            )
+        }
+        Text(text = likes.value.toString(), color = Color.White)
+
+        // Dislike Button
+        IconButton(
+            onClick = {
+                if (userDisliked.value) {
+                    // Undo dislike
+                    dislikes.value -= 1
+                    userDisliked.value = false
+                    firestore.collection("quotes").document(quoteId)
+                        .update("dislikes", FieldValue.increment(-1))
+                } else {
+                    if (userLiked.value) {
+                        likes.value -= 1
+                        userLiked.value = false
+                        firestore.collection("quotes").document(quoteId)
+                            .update("likes", FieldValue.increment(-1))
+                    }
+                    dislikes.value += 1
+                    userDisliked.value = true
+                    firestore.collection("quotes").document(quoteId)
+                        .update("dislikes", FieldValue.increment(1))
+                }
+            }
+        ) {
+            Icon(
+                imageVector = if (userDisliked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                contentDescription = "Dislike",
+                tint = if (userDisliked.value) Color.Red else Color.White,
+                modifier = Modifier.rotate(180f)
+            )
+        }
+        Text(text = dislikes.value.toString(), color = Color.White)
+    }
+}
+
 interface QuoteApiService {
     @GET("quotes")
     suspend fun getRandomQuote(
@@ -352,6 +475,25 @@ suspend fun fetchRandomQuote(): Pair<String, String>? {
         }
     } catch (e: Exception) {
         null
+    }
+}
+
+suspend fun addQuoteToFirestoreIfNotExists(
+    firestore: FirebaseFirestore,
+    quote: String,
+    author: String
+) {
+    val quoteCollection = firestore.collection("quotes")
+    val querySnapshot = quoteCollection.whereEqualTo("quote", quote).get().await()
+
+    if (querySnapshot.isEmpty) {
+        val newQuote = hashMapOf(
+            "quote" to quote,
+            "author" to author,
+            "likes" to 0,
+            "dislikes" to 0
+        )
+        quoteCollection.add(newQuote)
     }
 }
 
