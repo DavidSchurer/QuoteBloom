@@ -424,7 +424,7 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
                 updateLikeDislike(false)
             },
             modifier = Modifier.size(48.dp),
-            enabled = true
+            enabled = !userDisliked.value
         ) {
             Icon(
                 imageVector = if (userDisliked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
