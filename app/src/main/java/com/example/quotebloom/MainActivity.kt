@@ -35,7 +35,6 @@ import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import retrofit2.Retrofit
@@ -322,22 +321,13 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
 
 @Composable
 fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
+    val currentUser = FirebaseAuth.getInstance().currentUser
     val likes = remember { mutableStateOf(0) }
     val dislikes = remember { mutableStateOf(0) }
     val userLiked = remember { mutableStateOf(false) }
     val userDisliked = remember { mutableStateOf(false) }
-    var currentQuoteId by remember { mutableStateOf(quoteId) }
 
-    // userLiked and userDisliked states need to be reset when the quoteId changes
-    LaunchedEffect(quoteId) {
-        if (currentQuoteId != quoteId) {
-            userLiked.value = false
-            userDisliked.value = false
-            currentQuoteId = quoteId
-        }
-    }
-
-    // Ensure the quote exists in Firestore
+    // If the quote doesn't exist in firebase, add it to the firebase database
     LaunchedEffect(quoteId) {
         firestore.collection("quotes").document(quoteId)
             .get()
@@ -353,15 +343,53 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
             }
     }
 
-    // Real-time listener for likes and dislikes
+    // Real-time listener for likes, dislikes, and user interactions
     LaunchedEffect(quoteId) {
         firestore.collection("quotes").document(quoteId)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot != null && snapshot.exists()) {
                     likes.value = snapshot.getLong("likes")?.toInt() ?: 0
                     dislikes.value = snapshot.getLong("dislikes")?.toInt() ?: 0
+                    val userLikedList = snapshot.get("userLiked") as? List<String> ?: emptyList()
+                    val userDislikedList = snapshot.get("userDisliked") as? List<String> ?: emptyList()
+                    currentUser?.email?.let { email ->
+                        userLiked.value = email in userLikedList
+                        userDisliked.value = email in userDislikedList
+                    }
                 }
             }
+    }
+
+    fun updateLikeDislike(isLike: Boolean) {
+        val email = currentUser?.email ?: return
+        firestore.runTransaction { transaction ->
+            val quoteRef = firestore.collection("quotes").document(quoteId)
+            val snapshot = transaction.get(quoteRef)
+            val userLikedList = snapshot.get("userLiked") as? List<String> ?: emptyList()
+            val userDislikedList = snapshot.get("userDisliked") as? List<String> ?: emptyList()
+
+            val updates = mutableMapOf<String, Any>()
+            if (isLike) {
+                if (email !in userLikedList) {
+                    updates["likes"] = (snapshot.getLong("likes") ?: 0) + 1
+                    updates["userLiked"] = userLikedList + email
+                    if (email in userDislikedList) {
+                        updates["dislikes"] = (snapshot.getLong("dislikes") ?: 0) - 1
+                        updates["userDisliked"] = userDislikedList - email
+                    }
+                }
+            } else {
+                if (email !in userDislikedList) {
+                    updates["dislikes"] = (snapshot.getLong("dislikes") ?: 0) + 1
+                    updates["userDisliked"] = userDislikedList + email
+                    if (email in userLikedList) {
+                        updates["likes"] = (snapshot.getLong("likes") ?: 0) - 1
+                        updates["userLiked"] = userLikedList - email
+                    }
+                }
+            }
+            transaction.update(quoteRef, updates)
+        }
     }
 
     Row(
@@ -371,25 +399,10 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
         // Like Button
         IconButton(
             onClick = {
-                if (userLiked.value) {
-                    // Undo like
-                    likes.value -= 1
-                    userLiked.value = false
-                    firestore.collection("quotes").document(quoteId)
-                        .update("likes", FieldValue.increment(-1))
-                } else {
-                    if (userDisliked.value) {
-                        dislikes.value -= 1
-                        userDisliked.value = false
-                        firestore.collection("quotes").document(quoteId)
-                            .update("dislikes", FieldValue.increment(-1))
-                    }
-                    likes.value += 1
-                    userLiked.value = true
-                    firestore.collection("quotes").document(quoteId)
-                        .update("likes", FieldValue.increment(1))
-                }
-            }
+                updateLikeDislike(true)
+            },
+            modifier = Modifier.size(48.dp),
+            enabled = !userLiked.value
         ) {
             Icon(
                 imageVector = if (userLiked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
@@ -402,25 +415,10 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
         // Dislike Button
         IconButton(
             onClick = {
-                if (userDisliked.value) {
-                    // Undo dislike
-                    dislikes.value -= 1
-                    userDisliked.value = false
-                    firestore.collection("quotes").document(quoteId)
-                        .update("dislikes", FieldValue.increment(-1))
-                } else {
-                    if (userLiked.value) {
-                        likes.value -= 1
-                        userLiked.value = false
-                        firestore.collection("quotes").document(quoteId)
-                            .update("likes", FieldValue.increment(-1))
-                    }
-                    dislikes.value += 1
-                    userDisliked.value = true
-                    firestore.collection("quotes").document(quoteId)
-                        .update("dislikes", FieldValue.increment(1))
-                }
-            }
+                updateLikeDislike(false)
+            },
+            modifier = Modifier.size(48.dp),
+            enabled = !userDisliked.value
         ) {
             Icon(
                 imageVector = if (userDisliked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
