@@ -36,6 +36,7 @@ import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import retrofit2.Retrofit
@@ -286,24 +287,34 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                         Button(
                             onClick = {
                                 if (user != null) {
-                                    val quoteData = mapOf("quote" to quote, "author" to author)
-                                    firestore.collection("users")
-                                        .document(user.uid)
-                                        .collection("savedQuotes")
-                                        .add(quoteData)
-                                        .addOnSuccessListener {
-                                            Toast.makeText(
-                                                context,
-                                                "Quote saved successfully",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                        .addOnFailureListener {
-                                            Toast.makeText(
-                                                context,
-                                                "Error saving quote",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
+                                    firestore.collection("quotes").document(quote)
+                                        .get()
+                                        .addOnSuccessListener { document ->
+                                            if (document.exists()) {
+                                                val userSavedList =
+                                                    document.get("userSaved") as? List<String>
+                                                        ?: emptyList()
+                                                if (!userSavedList.contains(user.email)) {
+                                                    firestore.collection("quotes").document(quote)
+                                                        .update(
+                                                            "userSaved",
+                                                            FieldValue.arrayUnion(user.email)
+                                                        )
+                                                        .addOnSuccessListener {
+                                                            Toast.makeText(
+                                                                context,
+                                                                "Quote saved successfully",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                        }
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "You have already saved this quote",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
                                         }
                                 }
                             },
@@ -327,6 +338,7 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
     val dislikes = remember { mutableStateOf(0) }
     val userLiked = remember { mutableStateOf(false) }
     val userDisliked = remember { mutableStateOf(false) }
+    val userSaved = remember { mutableStateOf(false) }
 
     // If the quote doesn't exist in firebase, add it to the firebase database
     LaunchedEffect(quoteId) {
@@ -337,7 +349,8 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
                     val quoteData = mapOf(
                         "likes" to 0,
                         "dislikes" to 0,
-                        "quoteText" to quoteId
+                        "quoteText" to quoteId,
+                        "userSaved" to emptyList<String>()
                     )
                     firestore.collection("quotes").document(quoteId).set(quoteData)
                 }
@@ -353,9 +366,11 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
                     dislikes.value = snapshot.getLong("dislikes")?.toInt() ?: 0
                     val userLikedList = snapshot.get("userLiked") as? List<String> ?: emptyList()
                     val userDislikedList = snapshot.get("userDisliked") as? List<String> ?: emptyList()
+                    val userSavedList = snapshot.get("userSaved") as? List<String> ?: emptyList()
                     currentUser?.email?.let { email ->
                         userLiked.value = email in userLikedList
                         userDisliked.value = email in userDislikedList
+                        userSaved.value = email in userSavedList
                     }
                 }
             }
