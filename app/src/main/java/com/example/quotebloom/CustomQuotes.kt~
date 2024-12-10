@@ -2,6 +2,7 @@ package com.example.quotebloom
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -127,43 +128,49 @@ fun CustomQuotesScreen(navController: NavHostController, mAuth: FirebaseAuth) {
                                 .fillMaxWidth()
                                 .padding(vertical = 8.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
+                            Column(
                                 modifier = Modifier.padding(16.dp)
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = quoteData.quote, style = MaterialTheme.typography.body1, color = Color.White)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = " - ${quoteData.author}",
-                                        style = MaterialTheme.typography.body2,
-                                        modifier = Modifier.align(Alignment.End),
-                                        color = Color.White
-                                    )
-                                }
-                                IconButton(onClick = {
-                                    shareQuote(context, quoteData.quote, quoteData.author)
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Share,
-                                        contentDescription = "Share Quote",
-                                        tint = Color.White
-                                    )
-                                }
-                                IconButton(onClick = {
-                                    if (user != null) {
-                                        firestore.collection("users")
-                                            .document(user.uid)
-                                            .collection("customQuotes")
-                                            .document(quoteData.documentId)
-                                            .delete()
-                                            .addOnSuccessListener {
-                                                customQuotes.value =
-                                                    customQuotes.value.filter { it.documentId != quoteData.documentId }
-                                            }
+                                Text(text = quoteData.quote, style = MaterialTheme.typography.body1, color = Color.White)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = " - ${quoteData.author}",
+                                    style = MaterialTheme.typography.body2,
+                                    modifier = Modifier.align(Alignment.End),
+                                    color = Color.White
+                                )
+
+                                // Add share and delete buttons below the quote and author
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp)
+                                ) {
+                                    IconButton(onClick = {
+                                        shareQuote(context, quoteData.author quoteData.quote)
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Share,
+                                            contentDescription = "Share Quote",
+                                            tint = Color.White
+                                        )
                                     }
-                                }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete Quote", tint = Color.White)
+                                    IconButton(onClick = {
+                                        if (user != null) {
+                                            firestore.collection("users")
+                                                .document(user.uid)
+                                                .collection("customQuotes")
+                                                .document(quoteData.documentId)
+                                                .delete()
+                                                .addOnSuccessListener {
+                                                    customQuotes.value =
+                                                        customQuotes.value.filter { it.documentId != quoteData.documentId }
+                                                }
+                                        }
+                                    }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete Quote", tint = Color.White)
+                                    }
                                 }
                             }
                         }
@@ -183,14 +190,27 @@ fun CustomQuotesScreen(navController: NavHostController, mAuth: FirebaseAuth) {
                                     value = name,
                                     onValueChange = { name = it },
                                     label = { Text("Name", color = Color.White) },
-                                    colors = TextFieldDefaults.textFieldColors(backgroundColor = Color.Transparent, focusedIndicatorColor = Color.White)
+                                    colors = TextFieldDefaults.textFieldColors(
+                                        backgroundColor = Color.Transparent,
+                                        focusedIndicatorColor = Color.White,
+                                        textColor = Color.White,
+                                        cursorColor = Color.White,
+                                        unfocusedIndicatorColor = Color.Gray,
+                                        placeholderColor = Color.Gray)
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 TextField(
                                     value = quoteContent,
                                     onValueChange = { quoteContent = it },
                                     label = { Text("Quote Content", color = Color.White) },
-                                    colors = TextFieldDefaults.textFieldColors(backgroundColor = Color.Transparent, focusedIndicatorColor = Color.White)
+                                    colors = TextFieldDefaults.textFieldColors(
+                                        backgroundColor = Color.Transparent,
+                                        focusedIndicatorColor = Color.White,
+                                        textColor = Color.White,
+                                        cursorColor = Color.White,
+                                        unfocusedIndicatorColor = Color.Gray,
+                                        placeholderColor = Color.Gray
+                                    )
                                 )
                             }
                         },
@@ -244,7 +264,11 @@ private fun reloadCustomQuotes(user: FirebaseUser?, firestore: FirebaseFirestore
                     QuoteData(
                         documentId = it.id,
                         quote = it.getString("quote") ?: "",
-                        author = it.getString("author") ?: ""
+                        author = it.getString("author") ?: "",
+                        likes = it.getLong("likes")?.toInt() ?: 0,
+                        dislikes = it.getLong("dislikes")?.toInt() ?: 0,
+                        userLiked = it.get("userLiked") as? Boolean ?: false,
+                        userDisliked = it.get("userDisliked") as? Boolean ?: false
                     )
                 }
                 customQuotes.value = quotes

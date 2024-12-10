@@ -328,7 +328,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 16.dp)
                             colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
                         ) {
                             Text("Save This Quote", color = Color.White)

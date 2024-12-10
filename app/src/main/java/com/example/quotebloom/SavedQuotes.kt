@@ -13,8 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -24,6 +27,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -34,12 +38,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
 data class QuoteData(
@@ -89,7 +95,7 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
                 }
             )
                 },
-                backgroundColor = Color(0xFF232323)
+        backgroundColor = Color(0xFF121212)
             ) {
                 paddingValues ->
                 Box(
@@ -109,9 +115,32 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
                             contentPadding = PaddingValues(16.dp)
                         ) {
                             items(savedQuotes) { quote ->
-                                SavedQuoteCard(quote, firestore, user?.email.orEmpty())
+                                SavedQuoteCard(quote, firestore, user?.email.orEmpty(),
+                                    onDelete = {
+                                        deletedQuote ->
+                                        savedQuotes.removeIf { it["quoteText"] == deletedQuote["quoteText"] }
+                                    }
+                                )
                             }
                         }
+                    }
+
+                    Button(
+                        onClick = {
+                            user?.email?.let { email ->
+                                deleteAllSavedQuotes(firestore, email) {
+                                    savedQuotes.clear()
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
+
+                    ) {
+                        Text("Delete All Saved Quotes", color = Color.White)
                     }
                 }
     }
@@ -121,7 +150,8 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
 fun SavedQuoteCard(
     quoteData: Map<String, Any>,
     firestore: FirebaseFirestore,
-    currentUserEmail: String
+    currentUserEmail: String,
+    onDelete: (Map<String, Any>) -> Unit // Callback to refresh the saved quotes after a quote is deleted
 ) {
     val quoteText = quoteData["quoteText"] as? String ?: "Unknown Quote"
     val author = quoteData["author"] as? String ?: "Unknown Author"
@@ -157,43 +187,59 @@ fun SavedQuoteCard(
         ) {
             Text(
                 text = quoteText,
-                style = MaterialTheme.typography.body1.copy(color = Color.White)
+                style = MaterialTheme.typography.body1.copy(color = Color.White),
+                modifier = Modifier.padding(bottom = 8.dp)
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "— ${quoteData["author"]}",
-                style = MaterialTheme.typography.body2.copy(color = Color.Gray)
+                style = MaterialTheme.typography.body2.copy(
+                    fontStyle = FontStyle.Italic,
+                    color = Color.White
+                ),
+                modifier = Modifier.align(Alignment.End)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                // Like Icon Button
                 IconButton(
                     onClick = {
                         updateLikesDislikes(firestore, quoteText, currentUserEmail, isLike = true)
-                    }
+                    },
+                    modifier = Modifier.size(48.dp),
+                    enabled = true
                 ) {
                     Icon(
                         imageVector = if (userLiked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                         contentDescription = "Like",
                         tint = if (userLiked.value) Color.Green else Color.White
                     )
-                    Text(text = likes.value.toString(), color = Color.White, fontSize = 12.sp)
                 }
+
+                Text(text = likes.value.toString(), color = Color.White)
+
+                // Dislike Icon Button
                 IconButton(
                     onClick = {
                         updateLikesDislikes(firestore, quoteText, currentUserEmail, isLike = false)
-                    }
+                    },
+                    modifier = Modifier.size(48.dp),
+                    enabled = true
                 ) {
                     Icon(
                         imageVector = if (userDisliked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                         contentDescription = "Dislike",
-                        tint = if (userDisliked.value) Color.Red else Color.White
+                        tint = if (userDisliked.value) Color.Red else Color.White,
+                        modifier = Modifier.rotate(180f)
                     )
-                    Text(text = dislikes.value.toString(), color = Color.White, fontSize = 12.sp)
                 }
+
+                Text(text = dislikes.value.toString(), color = Color.White)
+
                 IconButton(
                     onClick = {
                         shareQuote(context, quoteText, author)
@@ -201,9 +247,66 @@ fun SavedQuoteCard(
                 ) {
                     Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
                 }
+
+                IconButton(
+                    onClick = {
+                        deleteQuote(firestore, quoteText, currentUserEmail)
+                        onDelete(quoteData)
+                    }
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                }
             }
         }
     }
+}
+
+// Helper function to delete the quote from the users saved quotes collection
+fun deleteQuote(
+    firestore: FirebaseFirestore,
+    quoteId: String,
+    userEmail: String
+) {
+    firestore.runTransaction { transaction ->
+        val quoteRef = firestore.collection("quotes").document(quoteId)
+        val snapshot = transaction.get(quoteRef)
+
+        val userSavedList = snapshot.get("userSaved") as? MutableList<String> ?: mutableListOf()
+
+        if (userSavedList.contains(userEmail)) {
+            userSavedList.remove(userEmail)
+            transaction.update(quoteRef, "userSaved", userSavedList)
+        }
+    }
+}
+
+fun deleteAllSavedQuotes(
+    firestore: FirebaseFirestore,
+    userEmail: String,
+    onComplete: () -> Unit
+) {
+    firestore.collection("quotes")
+        .whereArrayContains("userSaved", userEmail)
+        .get()
+        .addOnSuccessListener { documents ->
+            val batch = firestore.batch()
+
+            for (document in documents) {
+                val quoteRef = document.reference
+                batch.update(
+                    quoteRef,
+                    "userSaved", FieldValue.arrayRemove(userEmail)
+                )
+            }
+
+            batch.commit()
+                .addOnSuccessListener {
+                    onComplete()
+                }
+                .addOnFailureListener {
+
+                }
+        }
 }
 
 // Helper function to update likes and dislikes
@@ -247,7 +350,7 @@ fun updateLikesDislikes(
 fun shareQuote(context: Context, quote: String, author: String) {
     val shareIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, "\"$quote\" - $author")
+        putExtra(Intent.EXTRA_TEXT, "\"$quote\"\n\n— $author")
     }
     context.startActivity(Intent.createChooser(shareIntent, "Share Quote via"))
 }
