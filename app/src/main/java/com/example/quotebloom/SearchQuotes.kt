@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 
@@ -71,7 +72,7 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
     var author by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
     val firestore = FirebaseFirestore.getInstance()
-    val currentUser = mAuth.currentUser
+    val user = mAuth.currentUser
     val context = LocalContext.current
 
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -125,6 +126,7 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                     if (fetchedQuote != null) {
                         quote = fetchedQuote.first
                         author = fetchedQuote.second
+                        addQuoteToFirestoreIfNotExists(firestore, quote, author)
                     } else {
                         quote = "No quote found."
                         author = ""
@@ -153,61 +155,82 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                                     color = Color.White
                                 )
 
-                                Spacer(modifier = Modifier.height(8.dp))
-                                IconButton(
-                                    onClick = {
-                                        shareQuote(context = context, quote = quote, author = author)
-                                    },
-                                    modifier = Modifier.align(Alignment.Start)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Share,
-                                        contentDescription = "Share Quote",
-                                        tint = Color.White
-                                    )
-                            }
-                            IconButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        val newQuote = fetchQuoteByCategory(selectedCategory, api)
-                                        if (newQuote != null) {
-                                            quote = newQuote.first
-                                            author = newQuote.second
-                                        } else {
-                                            quote = "No quote found."
-                                            author = ""
-                                        }
-                                    }
-                                },
-                                modifier = Modifier.align(Alignment.Start)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Shuffle Quote",
-                                    tint = Color.White
-                                )
-                            }
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceEvenly
                                 ) {
                                     LikesDislikesButtons(quoteId = quote, firestore = firestore, author = author)
+                                    IconButton(
+                                        onClick = {
+                                            shareQuote(context = context, quote = quote, author = author)
+                                        },
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Share,
+                                            contentDescription = "Share Quote",
+                                            tint = Color.White
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                val newQuote = fetchQuoteByCategory(selectedCategory, api)
+                                                if (newQuote != null) {
+                                                    quote = newQuote.first
+                                                    author = newQuote.second
+                                                } else {
+                                                    quote = "No quote found."
+                                                    author = ""
+                                                }
+                                            }
+                                        },
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = "Shuffle Quote",
+                                            tint = Color.White
+                                        )
+                                    }
+
                                 }
 
                                 Button(
                                     onClick = {
-                                        saveQuoteToFirebase(
-                                            firestore = firestore,
-                                            userId = currentUser?.uid ?: "",
-                                            quote = quote,
-                                            author = author,
-                                            context = context
-                                        )
+                                        if (user != null) {
+                                            firestore.collection("quotes").document(quote)
+                                                .get()
+                                                .addOnSuccessListener { document ->
+                                                    if (document.exists()) {
+                                                        val userSavedList =
+                                                            document.get("userSaved") as? List<String>
+                                                                ?: emptyList()
+                                                        if (!userSavedList.contains(user.email)) {
+                                                            firestore.collection("quotes").document(quote)
+                                                                .update(
+                                                                    "userSaved",
+                                                                    FieldValue.arrayUnion(user.email)
+                                                                )
+                                                                .addOnSuccessListener {
+                                                                    Toast.makeText(
+                                                                        context,
+                                                                        "Quote saved successfully",
+                                                                        Toast.LENGTH_SHORT
+                                                                    ).show()
+                                                                }
+                                                        } else {
+                                                            Toast.makeText(
+                                                                context,
+                                                                "You have already saved this quote",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                        }
+                                                    }
+                                                }
+                                        }
                                     },
-                                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         backgroundColor = Color(0xFF383838)
                                     )
