@@ -38,7 +38,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
@@ -244,7 +243,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                             modifier = Modifier.align(Alignment.End)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        LikesDislikesButtons(quoteId = quote, firestore = firestore)
+                        LikesDislikesButtons(quoteId = quote, firestore = firestore, author = author)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -332,7 +331,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
 }
 
 @Composable
-fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
+fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore, author: String) {
     val currentUser = FirebaseAuth.getInstance().currentUser
     val likes = remember { mutableStateOf(0) }
     val dislikes = remember { mutableStateOf(0) }
@@ -350,7 +349,8 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore) {
                         "likes" to 0,
                         "dislikes" to 0,
                         "quoteText" to quoteId,
-                        "userSaved" to emptyList<String>()
+                        "userSaved" to emptyList<String>(),
+                        "author" to author
                     )
                     firestore.collection("quotes").document(quoteId).set(quoteData)
                 }
@@ -498,22 +498,35 @@ suspend fun fetchRandomQuote(): Pair<String, String>? {
     }
 }
 
-suspend fun addQuoteToFirestoreIfNotExists(
+fun addQuoteToFirestoreIfNotExists(
     firestore: FirebaseFirestore,
     quote: String,
     author: String
 ) {
-    val quoteCollection = firestore.collection("quotes")
-    val querySnapshot = quoteCollection.whereEqualTo("quote", quote).get().await()
+    val quoteRef = firestore.collection("quotes").document(quote)
 
-    if (querySnapshot.isEmpty) {
-        val newQuote = hashMapOf(
-            "quote" to quote,
-            "author" to author,
-            "likes" to 0,
-            "dislikes" to 0
-        )
-        quoteCollection.add(newQuote)
+    quoteRef.get().addOnSuccessListener { document ->
+        if (!document.exists()) {
+            val quoteData = mapOf(
+                "quoteText" to quote,
+                "author" to author,
+                "likes" to 0,
+                "dislikes" to 0,
+                "userSaved" to emptyList<String>(),
+                "userLiked" to emptyList<String>(),
+                "userDisliked" to emptyList<String>()
+            )
+            quoteRef.set(quoteData)
+                .addOnSuccessListener {
+                Log.d("Firestore", "Quote added successfully with author: $author")
+            }.addOnFailureListener { e ->
+                Log.e("Firestore", "Error adding quote", e)
+            }
+        } else {
+            Log.d("Firestore", "Quote already exists in Firestore")
+        }
+    }.addOnFailureListener { e ->
+        Log.e("Firestore", "Error fetching quote", e)
     }
 }
 
@@ -538,26 +551,6 @@ fun getQuoteFromPreferences(context: Context): Triple<String, String, Long>? {
     } else {
         null
     }
-}
-
-fun saveQuoteToFirestore(firestore: FirebaseFirestore, userId: String, quoteId: String) {
-    val savedQuote = hashMapOf(
-        "quoteId" to quoteId,
-        "userLiked" to false,
-        "userDisliked" to false
-    )
-
-    firestore.collection("users")
-        .document(userId)
-        .collection("savedQuotes")
-        .document(quoteId)
-        .set(savedQuote)
-        .addOnSuccessListener {
-            Log.d("saveQuoteToFirestore", "Quote saved")
-        }
-        .addOnFailureListener { e ->
-            Log.w("saveQuoteToFirestore", "Failed to save quote", e)
-        }
 }
 
 data class QuoteSearchResponse(val results: List<QuoteResult>)

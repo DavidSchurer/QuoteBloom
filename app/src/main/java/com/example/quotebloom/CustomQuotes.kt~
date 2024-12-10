@@ -67,7 +67,11 @@ fun CustomQuotesScreen(navController: NavHostController, mAuth: FirebaseAuth) {
                         QuoteData(
                             documentId = it.id,
                             quote = it.getString("quote") ?: "",
-                            author = it.getString("author") ?: ""
+                            author = it.getString("author") ?: "",
+                            likes = it.getLong("likes")?.toInt() ?: 0,
+                            dislikes = it.getLong("dislikes")?.toInt() ?: 0,
+                            userLiked = it.get("userLiked") as? Boolean ?: false,
+                            userDisliked = it.get("userDisliked") as? Boolean ?: false
                         )
                     }
                     customQuotes.value = quotes
@@ -186,7 +190,7 @@ fun CustomQuotesScreen(navController: NavHostController, mAuth: FirebaseAuth) {
                                     value = quoteContent,
                                     onValueChange = { quoteContent = it },
                                     label = { Text("Quote Content", color = Color.White) },
-                                    colors = TextFieldDefaults.textFieldColors(backgroundColor = Color.Transparent)
+                                    colors = TextFieldDefaults.textFieldColors(backgroundColor = Color.Transparent, focusedIndicatorColor = Color.White)
                                 )
                             }
                         },

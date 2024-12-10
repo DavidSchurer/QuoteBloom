@@ -194,7 +194,7 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    LikesDislikesButtons(quoteId = quote, firestore = firestore)
+                                    LikesDislikesButtons(quoteId = quote, firestore = firestore, author = author)
                                 }
 
                                 Button(
