@@ -29,8 +29,10 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -213,18 +215,29 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                 }
             }
 
-            Column (
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(16.dp)
+                    .background(Color(0xFF1E1E1E), shape = MaterialTheme.shapes.medium)
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // QOTD Heading
-                Text(
-                    text = "Quote of the Day",
-                    style = MaterialTheme.typography.h5.copy(color = Color.White),
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Quote of the Day",
+                        style = MaterialTheme.typography.h4.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 22.sp,
+                            color = Color.White
+                        ),
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                }
                 // QOTD Quote Card
                 Card(
                     elevation = 4.dp,
@@ -235,22 +248,22 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Box(modifier = Modifier.weight(1f)) {
                             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                            Text(
-                                text = quote,
-                                style = MaterialTheme.typography.body1.copy(color = Color.White),
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = " - $author",
-                                style = MaterialTheme.typography.body2.copy(
-                                    fontStyle = FontStyle.Italic,
-                                    color = Color.White
-                                ),
-                                modifier = Modifier.align(Alignment.End)
-                            )
+                                Text(
+                                    text = quote,
+                                    style = MaterialTheme.typography.body1.copy(color = Color.White),
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = " - $author",
+                                    style = MaterialTheme.typography.body2.copy(
+                                        fontStyle = FontStyle.Italic,
+                                        color = Color.White
+                                    ),
+                                    modifier = Modifier.align(Alignment.End)
+                                )
+                            }
                         }
-                    }
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -340,7 +353,6 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
 
     }
 }
-
 @Composable
 fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore, author: String) {
     val currentUser = FirebaseAuth.getInstance().currentUser
