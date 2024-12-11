@@ -136,8 +136,7 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
                                 Text("Filter by Quote", color = Color.White)
                             }
                             Button(
-                                onClick = { filterType = "author"
-                                          searchQuery = "" },
+                                onClick = { filterType = "author" },
                                 colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838)),
                                 modifier = Modifier.weight(1f) // Ensure buttons fill available space equally
                             ) {
