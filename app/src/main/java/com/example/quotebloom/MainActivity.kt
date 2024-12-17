@@ -9,11 +9,37 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.*
+import androidx.compose.material.BottomNavigation
+import androidx.compose.material.BottomNavigationItem
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
+import androidx.compose.material.Card
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Scaffold
+import androidx.compose.material.Text
+import androidx.compose.material.TextField
+import androidx.compose.material.TextFieldDefaults
+import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Favorite
@@ -22,12 +48,19 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,6 +73,7 @@ import androidx.navigation.compose.rememberNavController
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import retrofit2.Retrofit
@@ -47,6 +81,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Query
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,6 +143,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
 
     val user = mAuth.currentUser
     val firestore = FirebaseFirestore.getInstance()
+    var showComments by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -346,6 +385,32 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                         ) {
                             Text("Save This Quote", color = Color.White)
                         }
+                        Button(
+                            onClick = { showComments = !showComments },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
+                        ) {
+                            Text("Comments", color = Color.White)
+                        }
+                    }
+                    if (showComments) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 200.dp)
+                                .height(400.dp)
+                        ) {
+                            CommentSection(
+                                quote = quote,
+                                firestore = firestore,
+                                user = mAuth.currentUser,
+                                navController = navController,
+                                mAuth = mAuth,
+                                onCloseCommentSection = { showComments = false }
+                            )
+                        }
                     }
                 }
             }
@@ -353,6 +418,194 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
 
     }
 }
+
+@Composable
+fun CommentSection(
+    quote: String,
+    firestore: FirebaseFirestore,
+    user: FirebaseUser?,
+    navController: NavHostController,
+    mAuth: FirebaseAuth,
+    onCloseCommentSection: () -> Unit
+) {
+    val commentsList = remember { mutableStateOf<List<Comment>>(emptyList()) }
+    val commentText = remember { mutableStateOf("") }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val listState = rememberLazyListState()
+    val postCommentTrigger = remember { mutableStateOf(false) }
+
+    // Load comments when the quote changes
+    LaunchedEffect(quote) {
+        loadComments(quote, commentsList, firestore)
+    }
+
+    // Scroll effect triggered after posting a comment
+    LaunchedEffect(postCommentTrigger.value) {
+        if (postCommentTrigger.value) {
+            listState.animateScrollToItem(commentsList.value.size - 1)
+        }
+    }
+
+    // Comment posting logic
+    val handlePostComment: () -> Unit = {
+        if (user != null && commentText.value.isNotBlank()) {
+            val newComment = user.email?.let {
+                Comment(
+                    user = it,
+                    message = commentText.value,
+                    timestamp = System.currentTimeMillis()
+                )
+            }
+
+            if (newComment != null) {
+                // Post the comment to Firestore
+                addCommentToFirestore(quote, newComment, firestore)
+                commentText.value = ""  // Clear the input field
+                loadComments(quote, commentsList, firestore)  // Reload comments
+                postCommentTrigger.value = !postCommentTrigger.value  // Trigger scroll effect
+            }
+        }
+    }
+
+    Card(
+        elevation = 4.dp,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        backgroundColor = Color(0xFF232323)
+    ) {
+        Box(modifier = Modifier.fillMaxHeight()) {
+            Column(
+                modifier = Modifier.fillMaxHeight()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Comments",
+                        style = MaterialTheme.typography.h6.copy(fontSize = 16.sp),
+                        color = Color.White,
+                    )
+
+                    IconButton(onClick = {
+                        onCloseCommentSection()
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close Comments",
+                            tint = Color.White
+                        )
+                    }
+                }
+
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    reverseLayout = false
+                ) {
+                    items(commentsList.value.sortedBy { it.timestamp }) { comment ->
+                        Column(modifier = Modifier.padding(vertical = 1.dp)) {
+                            val formattedTimestamp = formatTimestamp(comment.timestamp)
+                            Text(
+                                text = formattedTimestamp,
+                                style = MaterialTheme.typography.body2.copy(fontSize = 9.sp),
+                                color = Color.Gray,
+                            )
+                            Text(
+                                text = "${comment.user}: ${comment.message}",
+                                style = MaterialTheme.typography.body2.copy(fontSize = 13.sp),
+                                color = Color.White,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .background(Color(0xFF1E1E1E))
+                ) {
+                    TextField(
+                        value = commentText.value,
+                        onValueChange = { commentText.value = it },
+                        modifier = Modifier.weight(1f),
+                        label = { Text("Add a comment", color = Color.White) },
+                        colors = TextFieldDefaults.textFieldColors(
+                            backgroundColor = Color.Transparent,
+                            textColor = Color.White,
+                            placeholderColor = Color.White,
+                            focusedIndicatorColor = Color.White,
+                            unfocusedIndicatorColor = Color.White
+                        )
+                    )
+                    Button(
+                        onClick = handlePostComment,
+                        modifier = Modifier
+                            .padding(start = 8.dp),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
+                    ) {
+                        Text("Post", color = Color.White)
+                    }
+                }
+            }
+        }
+    }
+}
+
+data class Comment(val user: String, val message: String, val timestamp: Long = System.currentTimeMillis())
+
+fun formatTimestamp(timestamp: Long): String {
+    val pstTimeZone = TimeZone.getTimeZone("America/Los_Angeles")
+    val sdf = SimpleDateFormat("hh:mm a MM/dd/yyyy", Locale.getDefault())
+    sdf.timeZone = pstTimeZone
+    return sdf.format(Date(timestamp))
+}
+
+fun loadComments(quote: String, commentsList: MutableState<List<Comment>>, firestore: FirebaseFirestore) {
+    firestore.collection("quotes").document(quote)
+        .collection("comments")
+        .addSnapshotListener { snapshot, e ->
+            if (e != null) {
+                Log.w("Comments", "Listen failed.", e)
+                return@addSnapshotListener
+            }
+
+            if (snapshot != null) {
+                val comments = snapshot.documents.map { document ->
+                    val user = document.getString("user") ?: ""
+                    val message = document.getString("message") ?: ""
+                    val timestamp = document.getLong("timestamp") ?: 0
+
+                    Comment(user, message, timestamp)
+                }
+                commentsList.value = comments
+            } else {
+                Log.d("Comments", "Current data: null")
+            }
+        }
+}
+
+fun addCommentToFirestore(quote: String, comment: Comment, firestore: FirebaseFirestore) {
+    val commentsRef = firestore.collection("quotes").document(quote).collection("comments")
+    commentsRef.add(comment)
+        .addOnSuccessListener {
+            Log.d("Comments", "Comment added successfully")
+        }
+        .addOnFailureListener { e ->
+            Log.e("Comments", "Error adding comment", e)
+        }
+}
+
 @Composable
 fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore, author: String) {
     val currentUser = FirebaseAuth.getInstance().currentUser
