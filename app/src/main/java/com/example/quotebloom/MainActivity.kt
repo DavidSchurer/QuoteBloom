@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.BottomNavigation
 import androidx.compose.material.BottomNavigationItem
 import androidx.compose.material.Button
@@ -428,133 +429,187 @@ fun CommentSection(
     mAuth: FirebaseAuth,
     onCloseCommentSection: () -> Unit
 ) {
-    val commentsList = remember { mutableStateOf<List<Comment>>(emptyList()) }
-    val commentText = remember { mutableStateOf("") }
-    val keyboardController = LocalSoftwareKeyboardController.current
-    val listState = rememberLazyListState()
-    val postCommentTrigger = remember { mutableStateOf(false) }
+    var showDialog = remember { mutableStateOf(true) }
+    var username = remember { mutableStateOf("") }
 
-    // Load comments when the quote changes
-    LaunchedEffect(quote) {
-        loadComments(quote, commentsList, firestore)
-    }
 
-    // Scroll effect triggered after posting a comment
-    LaunchedEffect(postCommentTrigger.value) {
-        if (postCommentTrigger.value) {
-            listState.animateScrollToItem(commentsList.value.size - 1)
-        }
-    }
-
-    // Comment posting logic
-    val handlePostComment: () -> Unit = {
-        if (user != null && commentText.value.isNotBlank()) {
-            val newComment = user.email?.let {
-                Comment(
-                    user = it,
-                    message = commentText.value,
-                    timestamp = System.currentTimeMillis()
-                )
-            }
-
-            if (newComment != null) {
-                // Post the comment to Firestore
-                addCommentToFirestore(quote, newComment, firestore)
-                commentText.value = ""  // Clear the input field
-                loadComments(quote, commentsList, firestore)  // Reload comments
-                postCommentTrigger.value = !postCommentTrigger.value  // Trigger scroll effect
-            }
-        }
-    }
-
-    Card(
-        elevation = 4.dp,
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        backgroundColor = Color(0xFF232323)
-    ) {
-        Box(modifier = Modifier.fillMaxHeight()) {
-            Column(
-                modifier = Modifier.fillMaxHeight()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Comments",
-                        style = MaterialTheme.typography.h6.copy(fontSize = 16.sp),
-                        color = Color.White,
+    if (showDialog.value) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Enter a username") },
+            text = {
+                Column {
+                    TextField(
+                        value = username.value,
+                        onValueChange = { username.value = it },
+                        label = { Text("Username") }
                     )
-
-                    IconButton(onClick = {
-                        onCloseCommentSection()
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close Comments",
-                            tint = Color.White
-                        )
-                    }
                 }
-
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 16.dp),
-                    reverseLayout = false
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (username.value.isNotBlank()) {
+                            val email = user?.email ?: return@Button
+                            val usersRef = firestore.collection("users")
+                            usersRef.document(email)
+                                .set(mapOf("username" to username.value))
+                                .addOnSuccessListener {
+                                    Log.d("Users", "Username saved successfully")
+                                    fetchUsername(email, firestore) { fetchedUsername ->
+                                        username.value = fetchedUsername
+                                        showDialog.value = false
+                                    }
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("Users", "Error saving username", e)
+                                }
+                        }
+                    }
                 ) {
-                    items(commentsList.value.sortedBy { it.timestamp }) { comment ->
-                        Column(modifier = Modifier.padding(vertical = 1.dp)) {
-                            val formattedTimestamp = formatTimestamp(comment.timestamp)
-                            Text(
-                                text = formattedTimestamp,
-                                style = MaterialTheme.typography.body2.copy(fontSize = 9.sp),
-                                color = Color.Gray,
+                    Text("Save")
+                }
+            }
+        )
+    } else {
+
+        val commentsList = remember { mutableStateOf<List<Comment>>(emptyList()) }
+        val commentText = remember { mutableStateOf("") }
+        val keyboardController = LocalSoftwareKeyboardController.current
+        val listState = rememberLazyListState()
+        val postCommentTrigger = remember { mutableStateOf(false) }
+        val username = rememberLazyListState()
+
+        // Load comments when the quote changes
+        LaunchedEffect(quote) {
+            loadComments(quote, commentsList, firestore)
+        }
+
+        // Scroll effect triggered after posting a comment
+        LaunchedEffect(postCommentTrigger.value) {
+            if (postCommentTrigger.value && commentsList.value.isNotEmpty()) {
+                listState.animateScrollToItem(commentsList.value.size - 1)
+            }
+        }
+
+        // Comment posting logic
+        val context = LocalContext.current
+
+        val handlePostComment: () -> Unit = {
+            val email = user?.email
+            if (email == null || commentText.value.isBlank()) {
+                Toast.makeText(context, "Invalid input. Please try again.", Toast.LENGTH_SHORT).show()
+            }
+
+            if (commentText.value.isNotBlank()) {
+                if (email != null) {
+                    fetchUsername(email, firestore) { fetchedUsername ->
+                        if (fetchedUsername.isNotBlank()) {
+                            val newComment = Comment(
+                                user = fetchedUsername,
+                                message = commentText.value,
+                                timestamp = System.currentTimeMillis()
                             )
-                            Text(
-                                text = "${comment.user}: ${comment.message}",
-                                style = MaterialTheme.typography.body2.copy(fontSize = 13.sp),
-                                color = Color.White,
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
+                            addCommentToFirestore(quote, newComment, firestore, commentsList)
+                            commentText.value = "" // Clear input field
+                            postCommentTrigger.value = !postCommentTrigger.value // Trigger scroll
+                        } else {
+                            Toast.makeText(context, "Error fetching username", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
+            }
+        }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .background(Color(0xFF1E1E1E))
+        Card(
+            elevation = 4.dp,
+            shape = MaterialTheme.shapes.medium,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            backgroundColor = Color(0xFF232323)
+        ) {
+            Box(modifier = Modifier.fillMaxHeight()) {
+                Column(
+                    modifier = Modifier.fillMaxHeight()
                 ) {
-                    TextField(
-                        value = commentText.value,
-                        onValueChange = { commentText.value = it },
-                        modifier = Modifier.weight(1f),
-                        label = { Text("Add a comment", color = Color.White) },
-                        colors = TextFieldDefaults.textFieldColors(
-                            backgroundColor = Color.Transparent,
-                            textColor = Color.White,
-                            placeholderColor = Color.White,
-                            focusedIndicatorColor = Color.White,
-                            unfocusedIndicatorColor = Color.White
-                        )
-                    )
-                    Button(
-                        onClick = handlePostComment,
+                    Row(
                         modifier = Modifier
-                            .padding(start = 8.dp),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Post", color = Color.White)
+                        Text(
+                            text = "Comments",
+                            style = MaterialTheme.typography.h6.copy(fontSize = 16.sp),
+                            color = Color.White,
+                        )
+
+                        IconButton(onClick = {
+                            onCloseCommentSection()
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close Comments",
+                                tint = Color.White
+                            )
+                        }
+                    }
+
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 16.dp),
+                        reverseLayout = false
+                    ) {
+                        items(commentsList.value.sortedBy { it.timestamp }) { comment ->
+                            Column(modifier = Modifier.padding(vertical = 1.dp)) {
+                                val formattedTimestamp = formatTimestamp(comment.timestamp)
+                                Text(
+                                    text = formattedTimestamp,
+                                    style = MaterialTheme.typography.body2.copy(fontSize = 9.sp),
+                                    color = Color.Gray,
+                                )
+                                Text(
+                                    text = "${comment.user}: ${comment.message}",
+                                    style = MaterialTheme.typography.body2.copy(fontSize = 13.sp),
+                                    color = Color.White,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .background(Color(0xFF1E1E1E))
+                    ) {
+                        TextField(
+                            value = commentText.value,
+                            onValueChange = { commentText.value = it },
+                            modifier = Modifier.weight(1f),
+                            label = { Text("Add a comment", color = Color.White) },
+                            colors = TextFieldDefaults.textFieldColors(
+                                backgroundColor = Color.Transparent,
+                                textColor = Color.White,
+                                placeholderColor = Color.White,
+                                focusedIndicatorColor = Color.White,
+                                unfocusedIndicatorColor = Color.White
+                            )
+                        )
+                        Button(
+                            onClick = handlePostComment,
+                            modifier = Modifier
+                                .padding(start = 8.dp),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
+                        ) {
+                            Text("Post", color = Color.White)
+                        }
                     }
                 }
             }
@@ -571,35 +626,48 @@ fun formatTimestamp(timestamp: Long): String {
     return sdf.format(Date(timestamp))
 }
 
+fun fetchUsername(email: String, firestore: FirebaseFirestore, onComplete: (String) -> Unit) {
+    firestore.collection("users").document(email)
+        .get()
+        .addOnSuccessListener { document ->
+        val username = document.getString("username") ?: ""
+        onComplete(username)
+        }
+        .addOnFailureListener { e ->
+            Log.e("FetchUsername", "Error fetching username", e)
+            onComplete("")
+        }
+}
+
 fun loadComments(quote: String, commentsList: MutableState<List<Comment>>, firestore: FirebaseFirestore) {
     firestore.collection("quotes").document(quote)
         .collection("comments")
         .addSnapshotListener { snapshot, e ->
             if (e != null) {
-                Log.w("Comments", "Listen failed.", e)
+                Log.w("LoadComments", "Listen failed.", e)
                 return@addSnapshotListener
             }
 
-            if (snapshot != null) {
-                val comments = snapshot.documents.map { document ->
-                    val user = document.getString("user") ?: ""
+            if (snapshot != null && !snapshot.isEmpty) {
+                val comments = snapshot.documents.mapNotNull { document ->
+                    val username = document.getString("user") ?: ""
                     val message = document.getString("message") ?: ""
-                    val timestamp = document.getLong("timestamp") ?: 0
-
-                    Comment(user, message, timestamp)
+                    val timestamp = document.getLong("timestamp") ?: 0L
+                    Comment(user = username, message = message, timestamp = timestamp)
                 }
+                Log.d("LoadComments", "Loaded comments: $comments")
                 commentsList.value = comments
             } else {
-                Log.d("Comments", "Current data: null")
+                Log.d("LoadComments", "No comments found.")
             }
         }
 }
 
-fun addCommentToFirestore(quote: String, comment: Comment, firestore: FirebaseFirestore) {
+fun addCommentToFirestore(quote: String, comment: Comment, firestore: FirebaseFirestore, commentsList: MutableState<List<Comment>>) {
     val commentsRef = firestore.collection("quotes").document(quote).collection("comments")
     commentsRef.add(comment)
         .addOnSuccessListener {
-            Log.d("Comments", "Comment added successfully")
+            Log.d("Comments", "Comment added successfully: $comment")
         }
         .addOnFailureListener { e ->
             Log.e("Comments", "Error adding comment", e)
