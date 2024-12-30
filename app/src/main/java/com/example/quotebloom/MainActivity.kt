@@ -429,8 +429,31 @@ fun CommentSection(
     mAuth: FirebaseAuth,
     onCloseCommentSection: () -> Unit
 ) {
-    var showDialog = remember { mutableStateOf(true) }
+    var showDialog = remember { mutableStateOf(false) }
     var username = remember { mutableStateOf("") }
+
+    LaunchedEffect(user?.email) {
+        user?.email?.let { email ->
+            val usersRef = firestore.collection("users")
+            usersRef.document(email).get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        // If username exists, do not show the dialog
+                        val savedUsername = document.getString("username")
+                        if (savedUsername.isNullOrBlank()) {
+                            showDialog.value = true // Show dialog if no username
+                        } else {
+                            username.value = savedUsername
+                        }
+                    } else {
+                        showDialog.value = true // Show dialog if no user document exists
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("Users", "Error checking username", e)
+                }
+        }
+    }
 
     if (showDialog.value) {
         AlertDialog(
@@ -794,7 +817,7 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore, author: 
             onClick = {
                 updateLikeDislike(true)
             },
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(24.dp),
             enabled = true
         ) {
             Icon(
@@ -810,7 +833,7 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore, author: 
             onClick = {
                 updateLikeDislike(false)
             },
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(24.dp),
             enabled = true
         ) {
             Icon(
@@ -908,9 +931,12 @@ fun LikesDislikesButtonsComments(
     }
 
     // UI for Like and Dislike Buttons
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically) {
         // Like Button
-        IconButton(onClick = { updateLikeDislike(true) }) {
+        IconButton(onClick = { updateLikeDislike(true) },
+            modifier = Modifier.size(24.dp),
+            enabled = true) {
             Icon(
                 imageVector = if (userLiked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                 contentDescription = "Like",
@@ -920,7 +946,9 @@ fun LikesDislikesButtonsComments(
         Text(text = likes.value.toString(), color = Color.White)
 
         // Dislike Button
-        IconButton(onClick = { updateLikeDislike(false) }) {
+        IconButton(onClick = { updateLikeDislike(false) },
+            modifier = Modifier.size(24.dp),
+            enabled = true) {
             Icon(
                 imageVector = if (userDisliked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                 contentDescription = "Dislike",
