@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -70,6 +71,7 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
     val context = LocalContext.current
     val savedQuotes = remember { mutableStateListOf<Map<String, Any>>() }
     val user = mAuth.currentUser
+    var showComments by remember { mutableStateOf(false) }
 
     var searchQuery by remember { mutableStateOf("") }
     var filterType by remember { mutableStateOf("") }
@@ -304,6 +306,8 @@ fun SavedQuoteCard(
     val userLiked = remember { mutableStateOf(false) }
     val userDisliked = remember { mutableStateOf(false) }
     val context = LocalContext.current
+    var showComments by remember { mutableStateOf(false) }
+    val navController = rememberNavController()
 
     // Real-time updates for likes and dislikes
     LaunchedEffect(quoteText) {
@@ -399,6 +403,35 @@ fun SavedQuoteCard(
                     }
                 ) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Comments Button
+            Button(
+                onClick = { showComments = !showComments },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
+            ) {
+                Text("Comments", color = Color.White)
+            }
+
+            if (showComments) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(400.dp) // Increase the height to display more comments
+                        .padding(top = 16.dp)
+                ) {
+                    CommentSection(
+                        quote = quoteText,
+                        firestore = firestore,
+                        user = FirebaseAuth.getInstance().currentUser,
+                        navController = navController,
+                        mAuth = FirebaseAuth.getInstance(),
+                        onCloseCommentSection = { showComments = false }
+                    )
                 }
             }
         }
