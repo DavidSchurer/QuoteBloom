@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -74,6 +75,7 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
     val firestore = FirebaseFirestore.getInstance()
     val user = mAuth.currentUser
     val context = LocalContext.current
+    var showComments by remember { mutableStateOf(false) }
 
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -237,12 +239,38 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                                 ) {
                                     Text("Save This Quote", color = Color.White)
                                 }
+                                Button(
+                                    onClick = { showComments = !showComments },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp),
+                                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
+                                ) {
+                                    Text("Comments", color = Color.White)
+                                }
+                            }
+                            if (showComments) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 200.dp)
+                                        .height(400.dp)
+                                ) {
+                                    CommentSection(
+                                        quote = quote,
+                                        firestore = firestore,
+                                        user = mAuth.currentUser,
+                                        navController = navController,
+                                        mAuth = mAuth,
+                                        onCloseCommentSection = { showComments = false }
+                                    )
+                                }
+                            }
+
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
-                } else {
-                    Text("Loading quote...", style = MaterialTheme.typography.body2, color = Color.White)
                 }
             }
 
@@ -282,7 +310,6 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
             }
         }
     }
-}
 
 fun saveQuoteToFirebase(firestore: FirebaseFirestore, userId: String, quote: String, author: String, context: Context) {
     if (userId.isBlank()) {
