@@ -432,7 +432,6 @@ fun CommentSection(
     var showDialog = remember { mutableStateOf(true) }
     var username = remember { mutableStateOf("") }
 
-
     if (showDialog.value) {
         AlertDialog(
             onDismissRequest = { },
@@ -578,6 +577,12 @@ fun CommentSection(
                                     color = Color.White,
                                     modifier = Modifier.padding(vertical = 4.dp)
                                 )
+                                LikesDislikesButtonsComments(
+                                    commentId = comment.id,
+                                    firestore = firestore,
+                                    currentUser = user,
+                                    quoteId = quote
+                                )
                             }
                         }
                     }
@@ -617,7 +622,16 @@ fun CommentSection(
     }
 }
 
-data class Comment(val user: String, val message: String, val timestamp: Long = System.currentTimeMillis())
+data class Comment(
+    val id: String = "",
+    val user: String,
+    val message: String,
+    val likes: Int = 0,
+    val dislikes: Int = 0,
+    val userLiked: List<String> = emptyList(),
+    val userDisliked: List<String> = emptyList(),
+    val timestamp: Long = System.currentTimeMillis()
+)
 
 fun formatTimestamp(timestamp: Long): String {
     val pstTimeZone = TimeZone.getTimeZone("America/Los_Angeles")
@@ -630,8 +644,8 @@ fun fetchUsername(email: String, firestore: FirebaseFirestore, onComplete: (Stri
     firestore.collection("users").document(email)
         .get()
         .addOnSuccessListener { document ->
-        val username = document.getString("username") ?: ""
-        onComplete(username)
+            val username = document.getString("username") ?: ""
+            onComplete(username)
         }
         .addOnFailureListener { e ->
             Log.e("FetchUsername", "Error fetching username", e)
@@ -653,7 +667,8 @@ fun loadComments(quote: String, commentsList: MutableState<List<Comment>>, fires
                     val username = document.getString("user") ?: ""
                     val message = document.getString("message") ?: ""
                     val timestamp = document.getLong("timestamp") ?: 0L
-                    Comment(user = username, message = message, timestamp = timestamp)
+                    val id = document.id
+                    Comment(id = id, user = username, message = message, timestamp = timestamp)
                 }
                 Log.d("LoadComments", "Loaded comments: $comments")
                 commentsList.value = comments
@@ -663,11 +678,23 @@ fun loadComments(quote: String, commentsList: MutableState<List<Comment>>, fires
         }
 }
 
-fun addCommentToFirestore(quote: String, comment: Comment, firestore: FirebaseFirestore, commentsList: MutableState<List<Comment>>) {
+fun addCommentToFirestore(
+    quote: String,
+    comment: Comment,
+    firestore: FirebaseFirestore,
+    commentsList: MutableState<List<Comment>>
+) {
     val commentsRef = firestore.collection("quotes").document(quote).collection("comments")
-    commentsRef.add(comment)
+    val newCommentRef = commentsRef.document() // Generate a unique ID for the comment
+    val commentWithId = comment.copy(
+        id = newCommentRef.id,
+        likes = 0,
+        dislikes = 0
+    )
+
+    newCommentRef.set(commentWithId)
         .addOnSuccessListener {
-            Log.d("Comments", "Comment added successfully: $comment")
+            Log.d("Comments", "Comment added successfully: $commentWithId")
         }
         .addOnFailureListener { e ->
             Log.e("Comments", "Error adding comment", e)
@@ -797,6 +824,114 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore, author: 
     }
 }
 
+@Composable
+fun LikesDislikesButtonsComments(
+    commentId: String,
+    quoteId: String, // Added to ensure the correct Firestore path
+    firestore: FirebaseFirestore,
+    currentUser: FirebaseUser? // Authenticated Firebase user
+) {
+    val likes = remember { mutableStateOf(0) }
+    val dislikes = remember { mutableStateOf(0) }
+    val userLiked = remember { mutableStateOf(false) }
+    val userDisliked = remember { mutableStateOf(false) }
+
+    // Real-time listener for likes, dislikes, and user interactions
+    LaunchedEffect(commentId) {
+        val commentRef = firestore.collection("quotes")
+            .document(quoteId)
+            .collection("comments")
+            .document(commentId)
+
+        commentRef.addSnapshotListener { snapshot, _ ->
+            if (snapshot != null && snapshot.exists()) {
+                likes.value = snapshot.getLong("likes")?.toInt() ?: 0
+                dislikes.value = snapshot.getLong("dislikes")?.toInt() ?: 0
+                val userLikedList = snapshot.get("userLiked") as? List<String> ?: emptyList()
+                val userDislikedList = snapshot.get("userDisliked") as? List<String> ?: emptyList()
+                val email = currentUser?.email
+                if (email != null) {
+                    userLiked.value = email in userLikedList
+                    userDisliked.value = email in userDislikedList
+                }
+            }
+        }
+    }
+
+    // Function to update Firestore based on like or dislike actions
+    fun updateLikeDislike(isLike: Boolean) {
+        val email = currentUser?.email ?: return
+        val commentRef = firestore.collection("quotes")
+            .document(quoteId)
+            .collection("comments")
+            .document(commentId)
+
+        firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(commentRef)
+            val userLikedList = snapshot.get("userLiked") as? List<String> ?: emptyList()
+            val userDislikedList = snapshot.get("userDisliked") as? List<String> ?: emptyList()
+
+            val updates = mutableMapOf<String, Any>()
+
+            if (isLike) {
+                if (email in userLikedList) {
+                    // Undo like
+                    updates["likes"] = (snapshot.getLong("likes") ?: 0) - 1
+                    updates["userLiked"] = userLikedList - email
+                } else {
+                    // Add like
+                    updates["likes"] = (snapshot.getLong("likes") ?: 0) + 1
+                    updates["userLiked"] = userLikedList + email
+                    if (email in userDislikedList) {
+                        updates["dislikes"] = (snapshot.getLong("dislikes") ?: 0) - 1
+                        updates["userDisliked"] = userDislikedList - email
+                    }
+                }
+            } else {
+                if (email in userDislikedList) {
+                    // Undo dislike
+                    updates["dislikes"] = (snapshot.getLong("dislikes") ?: 0) - 1
+                    updates["userDisliked"] = userDislikedList - email
+                } else {
+                    // Add dislike
+                    updates["dislikes"] = (snapshot.getLong("dislikes") ?: 0) + 1
+                    updates["userDisliked"] = userDislikedList + email
+                    if (email in userLikedList) {
+                        updates["likes"] = (snapshot.getLong("likes") ?: 0) - 1
+                        updates["userLiked"] = userLikedList - email
+                    }
+                }
+            }
+
+            transaction.update(commentRef, updates)
+        }
+    }
+
+    // UI for Like and Dislike Buttons
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Like Button
+        IconButton(onClick = { updateLikeDislike(true) }) {
+            Icon(
+                imageVector = if (userLiked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                contentDescription = "Like",
+                tint = if (userLiked.value) Color.Green else Color.White
+            )
+        }
+        Text(text = likes.value.toString(), color = Color.White)
+
+        // Dislike Button
+        IconButton(onClick = { updateLikeDislike(false) }) {
+            Icon(
+                imageVector = if (userDisliked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                contentDescription = "Dislike",
+                tint = if (userDisliked.value) Color.Red else Color.White,
+                modifier = Modifier.rotate(180f)
+            )
+        }
+        Text(text = dislikes.value.toString(), color = Color.White)
+    }
+}
+
 interface QuoteApiService {
     @GET("quotes")
     suspend fun getRandomQuote(
@@ -862,10 +997,10 @@ fun addQuoteToFirestoreIfNotExists(
             )
             quoteRef.set(quoteData)
                 .addOnSuccessListener {
-                Log.d("Firestore", "Quote added successfully with author: $author")
-            }.addOnFailureListener { e ->
-                Log.e("Firestore", "Error adding quote", e)
-            }
+                    Log.d("Firestore", "Quote added successfully with author: $author")
+                }.addOnFailureListener { e ->
+                    Log.e("Firestore", "Error adding quote", e)
+                }
         } else {
             Log.d("Firestore", "Quote already exists in Firestore")
         }
