@@ -26,6 +26,3 @@
 - <strong>Android Studio</strong>
 - <strong>Google Authentication</strong>
 - <strong>API Ninjas - Quotes API</strong> 
-
-## App Demo
-Video coming soon..
