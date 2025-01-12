@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Card
@@ -99,11 +101,32 @@ fun SavedQuotes(navController: NavHostController, mAuth: FirebaseAuth) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Saved Quotes", color = Color.White) },
+                title = {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xFFB0B0B0),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text("Saved Quotes", color = Color.Black)
+                        }
+
+                        },
                 backgroundColor = Color(0xFF232323),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xFF2196F3),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 3.dp)
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
                     }
                 }
             )
@@ -333,76 +356,93 @@ fun SavedQuoteCard(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = quoteText,
-                style = MaterialTheme.typography.body1.copy(color = Color.White),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "— ${quoteData["author"]}",
-                style = MaterialTheme.typography.body2.copy(
-                    fontStyle = FontStyle.Italic,
-                    color = Color.White
-                ),
-                modifier = Modifier.align(Alignment.End)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+            Box(
+                modifier = Modifier
+                    .background(color = Color(0xFF1A2A3A), shape = RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                // Like Icon Button
-                IconButton(
-                    onClick = {
-                        updateLikesDislikes(firestore, quoteText, currentUserEmail, isLike = true)
-                    },
-                    modifier = Modifier.size(48.dp),
-                    enabled = true
-                ) {
-                    Icon(
-                        imageVector = if (userLiked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                        contentDescription = "Like",
-                        tint = if (userLiked.value) Color.Green else Color.White
+                Column {
+                    Text(
+                        text = quoteText,
+                        style = MaterialTheme.typography.body1.copy(color = Color.White),
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
+                        Text(
+                            text = "— $author",
+                            style = MaterialTheme.typography.body2.copy(
+                                fontStyle = FontStyle.Italic,
+                                color = Color.White
+                            ),
+                            modifier = Modifier.align(Alignment.End)
+                        )
+
                 }
-
-                Text(text = likes.value.toString(), color = Color.White)
-
-                // Dislike Icon Button
-                IconButton(
-                    onClick = {
-                        updateLikesDislikes(firestore, quoteText, currentUserEmail, isLike = false)
-                    },
-                    modifier = Modifier.size(48.dp),
-                    enabled = true
-                ) {
-                    Icon(
-                        imageVector = if (userDisliked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                        contentDescription = "Dislike",
-                        tint = if (userDisliked.value) Color.Red else Color.White,
-                        modifier = Modifier.rotate(180f)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .background(
+                        color = Color(0xFF6E6E6E),
+                        shape = RoundedCornerShape(12.dp)
                     )
-                }
-
-                Text(text = dislikes.value.toString(), color = Color.White)
-
-                IconButton(
-                    onClick = {
-                        shareQuote(context, quoteText, author)
-                    }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
-                }
-
-                IconButton(
-                    onClick = {
-                        deleteQuote(firestore, quoteText, currentUserEmail)
-                        onDelete(quoteData)
+                    // Like Icon Button
+                    IconButton(
+                        onClick = {
+                            updateLikesDislikes(firestore, quoteText, currentUserEmail, isLike = true)
+                        },
+                        modifier = Modifier.size(48.dp),
+                        enabled = true
+                    ) {
+                        Icon(
+                            imageVector = if (userLiked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                            contentDescription = "Like",
+                            tint = if (userLiked.value) Color.Green else Color.White
+                        )
                     }
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+
+                    Text(text = likes.value.toString(), color = Color.White)
+
+                    // Dislike Icon Button
+                    IconButton(
+                        onClick = {
+                            updateLikesDislikes(firestore, quoteText, currentUserEmail, isLike = false)
+                        },
+                        modifier = Modifier.size(48.dp),
+                        enabled = true
+                    ) {
+                        Icon(
+                            imageVector = if (userDisliked.value) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                            contentDescription = "Dislike",
+                            tint = if (userDisliked.value) Color.Red else Color.White,
+                            modifier = Modifier.rotate(180f)
+                        )
+                    }
+
+                    Text(text = dislikes.value.toString(), color = Color.White)
+
+                    IconButton(
+                        onClick = {
+                            shareQuote(context, quoteText, author)
+                        }
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
+                    }
+
+                    IconButton(
+                        onClick = {
+                            deleteQuote(firestore, quoteText, currentUserEmail)
+                            onDelete(quoteData)
+                        }
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.White)
+                    }
                 }
             }
 

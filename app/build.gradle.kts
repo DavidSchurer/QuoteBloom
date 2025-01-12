@@ -1,10 +1,16 @@
+import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
 }
 
+val quoteApiKey = gradleLocalProperties(rootDir)
+    .getProperty("QUOTES_API_KEY", "")
+
 android {
+
     namespace = "com.example.quotebloom"
     compileSdk = 35
 
@@ -19,6 +25,12 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        resValue(
+            "string",
+            "quotes_api_key",
+            "\" + quoteApiKey " + "\""
+        )
     }
 
     buildTypes {
@@ -27,6 +39,7 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
+
             )
         }
     }

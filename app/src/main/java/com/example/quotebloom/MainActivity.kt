@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.BottomNavigation
@@ -149,32 +150,57 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.height(90.dp),
                 title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("QuoteBloom", color = Color.White, style = MaterialTheme.typography.h6)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(top = 8.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xFFB0B0B0),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                "QuoteBloom",
+                                color = Color.Black,
+                                style = MaterialTheme.typography.h6
+                            )
+                        }
                         Text(
                             "Inspire, discover, share, and save meaningful quotes.",
                             style = MaterialTheme.typography.subtitle2.copy(fontStyle = FontStyle.Italic, color = Color.White),
                             textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                         )
                     }
                 },
                 backgroundColor = Color(0xFF232323),
                 actions = {
-                    IconButton(onClick = {
-                        mGoogleSignInClient.signOut().addOnCompleteListener {
-                            mGoogleSignInClient.revokeAccess().addOnCompleteListener {
-                                mAuth.signOut()
+                        IconButton(onClick = {
+                            mGoogleSignInClient.signOut().addOnCompleteListener {
+                                mGoogleSignInClient.revokeAccess().addOnCompleteListener {
+                                    mAuth.signOut()
 
-                                val intent = Intent(context, GoogleSignInActivity::class.java)
-                                context.startActivity(intent)
-                                (context as? ComponentActivity)?.finish()
+                                    val intent = Intent(context, GoogleSignInActivity::class.java)
+                                    context.startActivity(intent)
+                                    (context as? ComponentActivity)?.finish()
+                                }
+                            }
+                        }) {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        color = Color(0xFFFF5C5C),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                            ) {
+                                Icon(Icons.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White)
                             }
                         }
-                    }) {
-                        Icon(Icons.Filled.ExitToApp, contentDescription = "Logout", tint = Color.White)
-                    }
+
                 }
             )
         },
@@ -184,19 +210,52 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                 contentColor = Color.White
             ) {
                 BottomNavigationItem(
-                    icon = { Icon(Icons.Filled.Search, contentDescription = "Search for Quotes") },
+                    icon = {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xFF2196F3),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 3.dp)
+                        ) {
+                            Icon(Icons.Filled.Search, contentDescription = "Search for Quotes")
+                        }
+                           },
                     label = { Text("Search") },
                     selected = false,
                     onClick = { navController.navigate("search") }
                 )
                 BottomNavigationItem(
-                    icon = { Icon(Icons.Filled.Favorite, contentDescription = "Saved Quotes") },
+                    icon = {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xFFFF9800),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 3.dp)
+                        ) {
+                            Icon(Icons.Filled.Favorite, contentDescription = "Saved Quotes")
+                        }
+                           },
                     label = { Text("Saved") },
                     selected = false,
                     onClick = { navController.navigate("savedQuotes") }
                 )
                 BottomNavigationItem(
-                    icon = { Icon(Icons.Filled.Create, contentDescription = "Custom Quotes") },
+                    icon = {
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xFF4CAF50),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 3.dp)
+                        ) {
+                            Icon(Icons.Filled.Create, contentDescription = "Custom Quotes")
+                        }
+                           },
                     label = { Text("Custom Quotes") },
                     selected = false,
                     onClick = { navController.navigate("customQuotes") }
@@ -265,18 +324,28 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
             ) {
                 // QOTD Heading
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Quote of the Day",
-                        style = MaterialTheme.typography.h4.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp,
-                            color = Color.White
-                        ),
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = Color(0xFFB0B0B0),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Quote of the Day",
+                            style = MaterialTheme.typography.h4.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 22.sp,
+                                color = Color.Black
+                            )
+                        )
+                    }
                 }
                 // QOTD Quote Card
                 Card(
@@ -286,7 +355,11 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                     backgroundColor = Color(0xFF232323)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Box(modifier = Modifier.weight(1f)) {
+                        Box(modifier = Modifier
+                            .background(color = Color(0xFF1A2A3A),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 8.dp)) {
                             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                                 Text(
                                     text = quote,
@@ -305,46 +378,57 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                             }
                         }
                         Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xFF6E6E6E),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            LikesDislikesButtons(quoteId = quote, firestore = firestore, author = author)
-                            IconButton(
-                                onClick = {
-                                    val shareIntent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        putExtra(Intent.EXTRA_TEXT, "\"$quote\"\n\n— $author")
-                                        type = "text/plain"
-                                    }
-                                    context.startActivity(
-                                        Intent.createChooser(
-                                            shareIntent,
-                                            "Share Quote via"
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                LikesDislikesButtons(quoteId = quote, firestore = firestore, author = author)
+                                IconButton(
+                                    onClick = {
+                                        val shareIntent = Intent().apply {
+                                            action = Intent.ACTION_SEND
+                                            putExtra(Intent.EXTRA_TEXT, "\"$quote\"\n\n— $author")
+                                            type = "text/plain"
+                                        }
+                                        context.startActivity(
+                                            Intent.createChooser(
+                                                shareIntent,
+                                                "Share Quote via"
+                                            )
                                         )
+                                    },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Share,
+                                        contentDescription = "Share Quote",
+                                        tint = Color.White
                                     )
-                                },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Share,
-                                    contentDescription = "Share Quote",
-                                    tint = Color.White
-                                )
-                            }
-                            IconButton(
-                                onClick = {
-                                    shuffleTriggered = true
-                                },
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Shuffle Quote",
-                                    tint = Color.White
-                                )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        shuffleTriggered = true
+                                    },
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Refresh,
+                                        contentDescription = "Shuffle Quote",
+                                        tint = Color.White
+                                    )
+                                }
                             }
                         }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Button(
                             onClick = {
                                 if (user != null) {
@@ -381,7 +465,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 48.dp),
                             colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
                         ) {
                             Text("Save This Quote", color = Color.White)
@@ -390,7 +474,7 @@ fun MainPage(navController: NavHostController, mAuth: FirebaseAuth) {
                             onClick = { showComments = !showComments },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
+                                .padding(horizontal = 48.dp),
                             colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
                         ) {
                             Text("Comments", color = Color.White)
@@ -458,13 +542,20 @@ fun CommentSection(
     if (showDialog.value) {
         AlertDialog(
             onDismissRequest = { },
-            title = { Text("Enter a username") },
+            title = { Text("Enter a username",
+                color = Color.White) },
             text = {
                 Column {
                     TextField(
                         value = username.value,
                         onValueChange = { username.value = it },
-                        label = { Text("Username") }
+                        label = { Text("Username", color = Color.White) },
+                        colors = TextFieldDefaults.textFieldColors(
+                            focusedLabelColor = Color.White,
+                            unfocusedLabelColor = Color.White,
+                            textColor = Color.White,
+                            cursorColor = Color.White
+                        )
                     )
                 }
             },
@@ -487,11 +578,13 @@ fun CommentSection(
                                     Log.e("Users", "Error saving username", e)
                                 }
                         }
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF383838))
                 ) {
-                    Text("Save")
+                    Text("Save", color = Color.White)
                 }
-            }
+            },
+            backgroundColor = Color(0xFF232323)
         )
     } else {
 
@@ -809,7 +902,7 @@ fun LikesDislikesButtons(quoteId: String, firestore: FirebaseFirestore, author: 
     }
 
     Row(
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Like Button
@@ -991,7 +1084,7 @@ object RetrofitInstance {
 
 suspend fun fetchRandomQuote(): Pair<String, String>? {
     return try {
-        val apiKey = "NDmlYdnYfqoqnD8jzYulNQ==Air34IWPfvH2FfG2"
+        val apiKey = EnvironmentalVariables.QUOTES_API_KEY
         val response = RetrofitInstance.api.getRandomQuote(apiKey)
 
         if (response.isNotEmpty()) {
@@ -1001,6 +1094,7 @@ suspend fun fetchRandomQuote(): Pair<String, String>? {
             null
         }
     } catch (e: Exception) {
+        Log.e("FetchQuote", "Error fetching quote: ${e.message}")
         null
     }
 }

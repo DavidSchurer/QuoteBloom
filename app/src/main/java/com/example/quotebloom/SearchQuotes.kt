@@ -3,6 +3,7 @@ package com.example.quotebloom
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
@@ -144,58 +148,74 @@ fun SearchQuotes(navController: NavHostController, api: QuoteApiService, mAuth: 
                             backgroundColor = Color(0xFF232323)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = quote,
-                                    style = MaterialTheme.typography.body1,
-                                    color = Color.White
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "- $author",
-                                    style = MaterialTheme.typography.body2,
-                                    modifier = Modifier.align(Alignment.End),
-                                    color = Color.White
-                                )
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    LikesDislikesButtons(quoteId = quote, firestore = firestore, author = author)
-                                    IconButton(
-                                        onClick = {
-                                            shareQuote(context = context, quote = quote, author = author)
-                                        },
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Share,
-                                            contentDescription = "Share Quote",
-                                            tint = Color.White
+                                Box(modifier = Modifier
+                                    .background(color = Color(0xFF1A2A3A),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                        Text(
+                                            text = quote,
+                                            style = MaterialTheme.typography.body1,
+                                            color = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = "- $author",
+                                            style = MaterialTheme.typography.body2,
+                                            modifier = Modifier.align(Alignment.End),
+                                            color = Color.White
                                         )
                                     }
-                                    IconButton(
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                val newQuote = fetchQuoteByCategory(selectedCategory, api)
-                                                if (newQuote != null) {
-                                                    quote = newQuote.first
-                                                    author = newQuote.second
-                                                } else {
-                                                    quote = "No quote found."
-                                                    author = ""
-                                                }
-                                            }
-                                        },
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Refresh,
-                                            contentDescription = "Shuffle Quote",
-                                            tint = Color.White
-                                        )
-                                    }
-
                                 }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = Color(0xFF6E6E6E),
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceEvenly
+                                    ) {
+                                        LikesDislikesButtons(quoteId = quote, firestore = firestore, author = author)
+                                        IconButton(
+                                            onClick = {
+                                                shareQuote(context = context, quote = quote, author = author)
+                                            },
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Share,
+                                                contentDescription = "Share Quote",
+                                                tint = Color.White
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                coroutineScope.launch {
+                                                    val newQuote = fetchQuoteByCategory(selectedCategory, api)
+                                                    if (newQuote != null) {
+                                                        quote = newQuote.first
+                                                        author = newQuote.second
+                                                    } else {
+                                                        quote = "No quote found."
+                                                        author = ""
+                                                    }
+                                                }
+                                            },
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Refresh,
+                                                contentDescription = "Shuffle Quote",
+                                                tint = Color.White
+                                            )
+                                        }
 
+                                    }
+                                }
                                 Button(
                                     onClick = {
                                         if (user != null) {
@@ -344,7 +364,7 @@ suspend fun fetchQuoteByCategory(category: String, api: QuoteApiService): Pair<S
     return try {
         if (category.isBlank()) return null
 
-        val apiKey = "NDmlYdnYfqoqnD8jzYulNQ==Air34IWPfvH2FfG2"  // Replace with your actual API key
+        val apiKey = EnvironmentalVariables.QUOTES_API_KEY
         val baseUrl = "https://api.api-ninjas.com/v1/quotes"
         val url = "$baseUrl?category=$category"
 

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.ButtonDefaults
@@ -83,11 +84,31 @@ fun CustomQuotesScreen(navController: NavHostController, mAuth: FirebaseAuth) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Custom Quotes", color = Color.White) },
+                title = {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = Color(0xFFB0B0B0),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text("Custom Quotes", color = Color.Black)
+                    }
+                        },
                 backgroundColor = Color(0xFF232323),
             navigationIcon = {
                 IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                color = Color(0xFF2196F3),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
                 }
             }
             )
@@ -131,47 +152,68 @@ fun CustomQuotesScreen(navController: NavHostController, mAuth: FirebaseAuth) {
                             Column(
                                 modifier = Modifier.padding(16.dp)
                             ) {
-                                Text(text = quoteData.quote, style = MaterialTheme.typography.body1, color = Color.White)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = " - ${quoteData.author}",
-                                    style = MaterialTheme.typography.body2,
-                                    modifier = Modifier.align(Alignment.End),
-                                    color = Color.White
-                                )
 
-                                // Add share and delete buttons below the quote and author
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 8.dp)
-                                ) {
-                                    IconButton(onClick = {
-                                        shareQuote(context, quoteData.author quoteData.quote)
-                                    }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Share,
-                                            contentDescription = "Share Quote",
-                                            tint = Color.White
+                                Box(modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(color = Color(0xFF1A2A3A),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        Text(text = quoteData.quote, style = MaterialTheme.typography.body1, color = Color.White)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text(
+                                            text = " - ${quoteData.author}",
+                                            style = MaterialTheme.typography.body2,
+                                            modifier = Modifier.align(Alignment.End),
+                                            color = Color.White
                                         )
                                     }
-                                    IconButton(onClick = {
-                                        if (user != null) {
-                                            firestore.collection("users")
-                                                .document(user.uid)
-                                                .collection("customQuotes")
-                                                .document(quoteData.documentId)
-                                                .delete()
-                                                .addOnSuccessListener {
-                                                    customQuotes.value =
-                                                        customQuotes.value.filter { it.documentId != quoteData.documentId }
-                                                }
-                                        }
-                                    }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete Quote", tint = Color.White)
-                                    }
                                 }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = Color(0xFF6E6E6E),
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                // Add share and delete buttons below the quote and author
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly, // Change to SpaceEvenly
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        IconButton(onClick = {
+                                            shareQuote(context, quoteData.author, quoteData.quote)
+                                        }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Share,
+                                                contentDescription = "Share Quote",
+                                                tint = Color.White
+                                            )
+                                        }
+                                        IconButton(onClick = {
+                                            if (user != null) {
+                                                firestore.collection("users")
+                                                    .document(user.uid)
+                                                    .collection("customQuotes")
+                                                    .document(quoteData.documentId)
+                                                    .delete()
+                                                    .addOnSuccessListener {
+                                                        customQuotes.value =
+                                                            customQuotes.value.filter { it.documentId != quoteData.documentId }
+                                                    }
+                                            }
+                                        }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete Quote", tint = Color.White)
+                                        }
+
+                                }
+                                    }
                             }
                         }
                     }
