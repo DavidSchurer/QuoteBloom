@@ -25,4 +25,7 @@
 - <strong>Firebase</strong>
 - <strong>Android Studio</strong>
 - <strong>Google Authentication</strong>
-- <strong>API Ninjas - Quotes API</strong> 
+- <strong>API Ninjas - Quotes API</strong>
+
+## Video Demo
+# <strong>https://vimeo.com/1048533814/315b76810b?share=copy</strong>
